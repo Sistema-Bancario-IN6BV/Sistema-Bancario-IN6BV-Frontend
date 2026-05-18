@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { BrowserRouter } from 'react-router-dom';
 import { AppRoutes } from './router/AppRoutes';
 import { useAuthStore } from '../features/auth/store/authStore';
 
@@ -22,9 +21,7 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
-      <AppRoutes />
-    </BrowserRouter>
+    <AppRoutes />
   );
 }
 

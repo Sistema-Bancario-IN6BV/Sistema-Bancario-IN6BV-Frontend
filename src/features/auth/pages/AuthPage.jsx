@@ -156,13 +156,6 @@ function initPaper(canvas) {
 export const AuthPage = () => {
     const [view, setView] = useState("login");
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-    const canvasRef       = useRef(null);
-
-    usePaperCanvas(canvasRef);
-
-    if (isAuthenticated) return <Navigate to="/panel" replace />;
-
-    const isRegister = view === "register";
 
     return (
         <div className="auth-root">

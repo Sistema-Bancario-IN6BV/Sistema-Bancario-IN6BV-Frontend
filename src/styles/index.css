@@ -1,36 +1,36 @@
-@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=DM+Serif+Display:ital@0;1&display=swap');
+@import "tailwindcss";
 
 /* ===================== DESIGN TOKENS ===================== */
 @theme {
-  /* Paleta oficial */
-  --color-primary:        #2E6FD4;
-  --color-primary-dark:   #0A2540;
-  --color-primary-mid:    #1A4B8C;
-  --color-primary-light:  #5A9CF5;
-  --color-accent:         #00C48C;
-  --color-gold:           #D4AF37;
-  --color-danger:         #D63B3B;
-  --color-warning:        #E8A000;
-  --color-success:        #00875A;
-  --color-surface:        #E8EFF5;
+  /* Paleta original: Azul */
+  --color-primary:        #2e6fd4;
+  --color-primary-dark:   #0a2540;
+  --color-primary-mid:    #1a4b8c;
+  --color-primary-light:  #5a9cf5;
+  --color-accent:         #00c48c;
+  --color-gold:           #D4A017;
+  --color-danger:         #B22222;
+  --color-warning:        #D4A017;
+  --color-success:        #1b6b3a;
+  --color-surface:        #f0f4f9;
 
   /* Fondos */
-  --color-bg-app:         #F0F4F9;
-  --color-bg-card:        #FFFFFF;
-  --color-bg-sidebar:     #0A2540;
-  --color-bg-navbar:      #0A2540;
+  --color-bg-app:         #f0f4f9;
+  --color-bg-card:        #ffffff;
+  --color-bg-sidebar:     #0a2540;
+  --color-bg-navbar:      #0a2540;
 
   /* Texto */
-  --color-text-main:      #0A2540;
-  --color-text-secondary: #4A6278;
-  --color-text-muted:     #7A92A8;
-  --color-text-on-dark:   #F5F8FB;
-  --color-text-on-dark-muted: rgba(245,248,251,0.6);
+  --color-text-main:      #0a2540;
+  --color-text-secondary: #4b6a86;
+  --color-text-muted:     #7b8b9a;
+  --color-text-on-dark:   #f7fbff;
+  --color-text-on-dark-muted: rgba(247,251,255,0.6);
 
   /* Bordes */
-  --color-border:         #D0DCE8;
-  --color-border-focus:   #2E6FD4;
+  --color-border:         #d0dce8;
+  --color-border-focus:   #2e6fd4;
 
   /* Tipografía */
   --font-display: 'DM Serif Display', Georgia, serif;
@@ -58,11 +58,55 @@ body {
   line-height: 1.6;
 }
 
-/* ===================== AUTH LAYOUT ===================== */
-.auth-page {
-  min-height: 100vh;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+/* ===================== LOGIN ===================== */
+.login-wrapper {
+  min-height: auto;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-panel-left::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 20%, rgba(46,111,212,0.35) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 80%, rgba(0,196,140,0.18) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.auth-panel-left-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(208,220,232,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(208,220,232,0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+}
+
+.auth-panel-left-content {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  flex-direction: column;
+  padding: var(--p);
+  scrollbar-width: none;
+  user-select: none;
+}
+
+/* Avatar / Pig */
+.login-avatar {
+  --sz-avatar: 170px;
+  --sz-svg: calc(var(--sz-avatar) - 8px);
+  order: 0;
+  width: var(--sz-avatar);
+  height: var(--sz-avatar);
+  border: 2px solid rgba(244, 184, 200, 0.3);
+  border-radius: 9999px;
   overflow: hidden;
   position: relative;
 }
@@ -131,7 +175,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 20px rgba(46,111,212,0.5);
+  box-shadow: 0 4px 20px rgba(46,111,212,0.45);
 }
 
 .auth-panel-logo-name {
@@ -281,7 +325,7 @@ body {
 
 .field-input:focus {
   border-color: var(--color-primary);
-  background: #fff;
+  background: var(--color-bg-card);
   box-shadow: 0 0 0 3px rgba(46,111,212,0.12);
 }
 
@@ -555,7 +599,7 @@ body {
 .sidebar-item.active {
   color: var(--color-text-on-dark);
   background: var(--color-primary);
-  box-shadow: 0 4px 14px rgba(46,111,212,0.4);
+  box-shadow: 0 4px 14px rgba(60,54,51,0.4);
 }
 
 .sidebar-item-icon {
@@ -625,8 +669,6 @@ body {
   margin-bottom: 24px;
   flex-wrap: wrap;
 }
-
-.page-header-text {}
 
 .page-title {
   font-family: var(--font-display);
@@ -729,7 +771,7 @@ body {
   cursor: pointer;
   transition: border-color 0.2s, box-shadow 0.2s;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234A6278' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B635B' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
   padding-right: 32px;
@@ -944,14 +986,16 @@ body {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(10,37,64,0.55);
+  background: rgba(42,38,35,0.55);
   backdrop-filter: blur(4px);
   display: flex;
-  align-items: center;
+  /* Allow modal to position at top on small screens so the user can scroll down */
+  align-items: flex-start;
   justify-content: center;
   z-index: 50;
   padding: 16px;
   animation: fadeIn 0.15s ease;
+  overflow-y: auto;
 }
 
 .modal {
@@ -959,7 +1003,9 @@ body {
   border-radius: 16px;
   width: 100%;
   max-width: 480px;
-  max-height: 90vh;
+  /* leave a small gap from viewport edges and allow accurate max height */
+  max-height: calc(100vh - 32px);
+  margin: 16px 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -979,8 +1025,6 @@ body {
   gap: 12px;
   flex-shrink: 0;
 }
-
-.modal-header-info {}
 
 .modal-header-accent {
   background: var(--color-primary-dark);
@@ -1043,8 +1087,13 @@ body {
 .modal-body {
   padding: 20px 24px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   flex: 1;
 }
+
+/* Leave space at the bottom so the last form fields are not hidden behind the footer */
+.modal-body { padding-bottom: 96px; }
 
 .modal-footer {
   padding: 16px 24px;
@@ -1054,6 +1103,14 @@ body {
   gap: 10px;
   flex-shrink: 0;
   flex-wrap: wrap;
+}
+
+/* Ensure footer contrasts and stays readable when overlay scrolls */
+.modal-footer {
+  background: var(--color-bg-card);
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 -6px 20px rgba(0,0,0,0.04);
 }
 
 /* Modal form field */
@@ -1089,7 +1146,7 @@ body {
 
 .modal-input:focus {
   border-color: var(--color-primary);
-  background: #fff;
+  background: var(--color-bg-card);
   box-shadow: 0 0 0 3px rgba(46,111,212,0.1);
 }
 
@@ -1112,7 +1169,7 @@ body {
   cursor: pointer;
   transition: border-color 0.2s, box-shadow 0.2s;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234A6278' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B635B' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
 }
@@ -1310,7 +1367,7 @@ body {
   background: var(--color-primary-dark);
   background-image: radial-gradient(
     ellipse 75% 65% at 25% 45%,
-    rgba(46, 111, 212, 0.28) 0%,
+    rgba(60, 54, 51, 0.28) 0%,
     transparent 65%
   );
 }
@@ -1318,7 +1375,7 @@ body {
 .auth-bg-right {
   width: 50%;
   height: 100%;
-  background: #f0f4f9;
+  background: var(--color-bg-app);
 }
 
 /* Canvas Paper.js */
@@ -1386,7 +1443,7 @@ body {
   flex-shrink: 0;
   /* Por defecto → panel oscuro */
   background: var(--color-primary);
-  box-shadow: 0 4px 16px rgba(46,111,212,0.45);
+  box-shadow: 0 4px 16px rgba(60,54,51,0.45);
   transition: background var(--auth-dur) ease,
               box-shadow var(--auth-dur) ease,
               border     var(--auth-dur) ease;
@@ -1395,7 +1452,7 @@ body {
 /* Variante: icono sobre panel claro (login) */
 .auth-logo-icon.on-light {
   background: var(--color-primary-dark);
-  box-shadow: 0 4px 14px rgba(10,37,64,0.14);
+  box-shadow: 0 4px 14px rgba(42,38,35,0.14);
   border: 1px solid var(--color-border);
 }
 
@@ -1449,8 +1506,8 @@ body {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(135deg, rgba(46,111,212,0.14) 0%, transparent 55%),
-    radial-gradient(ellipse 55% 45% at 85% 85%, rgba(90,156,245,0.10) 0%, transparent 60%);
+    linear-gradient(135deg, rgba(60,54,51,0.14) 0%, transparent 55%),
+    radial-gradient(ellipse 55% 45% at 85% 85%, rgba(189,181,173,0.10) 0%, transparent 60%);
   pointer-events: none;
   z-index: 0;
 }
@@ -1629,7 +1686,7 @@ body {
   .auth-logo-icon.on-light {
     background: var(--color-primary);
     border: none;
-    box-shadow: 0 4px 14px rgba(46,111,212,0.35);
+    box-shadow: 0 4px 14px rgba(60,54,51,0.35);
   }
   .auth-box-logo .auth-logo-name,
   .auth-box-logo.on-dark .auth-logo-name { color: var(--color-text-main); }

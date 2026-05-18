@@ -1,7 +1,7 @@
 // UserDetailModal.jsx — REDISEÑO VISUAL · Lógica intacta
 import { useState } from "react";
 import { Spinner } from "../../../shared/components/layouts/Spinner";
-import defaultAvatarImg from "../../../assets/img/avatarDefault.png";
+import defaultAvatarImg from "../../../assets/img/hero.png";
 
 const IconX = () => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -21,7 +21,7 @@ export const UserDetailModal = ({
     if (!isOpen || !user) return null;
 
     /* — Estado y lógica originales intactos — */
-    const [role, setRole] = useState(user?.role || "CUSTOMER");
+    const [role, setRole] = useState(user?.role || "USER_ROLE");
 
     const avatarSrc = (() => {
         const value = user?.profilePicture?.trim();
@@ -40,9 +40,8 @@ export const UserDetailModal = ({
     };
 
     const roleBadge = {
-        PLATFORM_ADMIN:   "badge badge-primary",
-        RESTAURANT_ADMIN: "badge badge-warning",
-        CUSTOMER:         "badge badge-success",
+        ADMIN_ROLE:   "inline-flex items-center rounded-full px-2.5 py-0.5 text-sm font-semibold bg-blue-600 text-white border border-blue-700/20",
+        USER_ROLE:    "inline-flex items-center rounded-full px-2.5 py-0.5 text-sm font-semibold bg-emerald-600 text-white border border-emerald-700/20",
     };
 
     return (
@@ -78,8 +77,8 @@ export const UserDetailModal = ({
                                 @{user.username}
                             </p>
                             <div style={{ marginTop: 6 }}>
-                                <span className={roleBadge[user.role] || "badge badge-neutral"}>
-                                    {user.role}
+                                <span className={roleBadge[user.role] || "inline-flex items-center rounded-full px-2.5 py-0.5 text-sm font-semibold bg-slate-200 text-slate-800 border border-slate-300"}>
+                                    {user.role ? user.role.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase()) : "—"}
                                 </span>
                             </div>
                         </div>
@@ -114,9 +113,8 @@ export const UserDetailModal = ({
                             onChange={(e) => setRole(e.target.value)}
                             disabled={isCurrentUser}
                         >
-                            <option value="PLATFORM_ADMIN">PLATFORM_ADMIN</option>
-                            <option value="RESTAURANT_ADMIN">RESTAURANT_ADMIN</option>
-                            <option value="CUSTOMER">CUSTOMER</option>
+                            <option value="ADMIN_ROLE">ADMIN_ROLE</option>
+                            <option value="USER_ROLE">USER_ROLE</option>
                         </select>
                         {isCurrentUser && (
                             <p className="modal-field-error" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>

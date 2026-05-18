@@ -7,6 +7,7 @@ import {
   updateAccount as updateAccountRequest,
   deleteAccount as deleteAccountRequest,
 } from "../../../shared/api/admin";
+import { useAuthStore } from "../../auth/store/authStore";
 
 export const useAccountStore = create((set, get) => ({
   accounts: [],
@@ -22,8 +23,10 @@ export const useAccountStore = create((set, get) => ({
       set({ loading: true, error: null });
       const response = await getAccountsRequest();
 
-      // Backend: { success: true, accounts }
-      const accounts = response?.data?.accounts ?? [];
+      // Backend puede responder como arreglo directo o como { accounts: [...] }
+      const accounts = Array.isArray(response?.data)
+        ? response.data
+        : response?.data?.accounts ?? response?.data?.account ?? [];
 
       set({ accounts: Array.isArray(accounts) ? accounts : [], loading: false });
       return accounts;
@@ -60,6 +63,16 @@ export const useAccountStore = create((set, get) => ({
   },
 
   createAccount: async ({ externalUserId, balance, accountNumber }) => {
+    // Validación: solo administradores pueden crear cuentas (protección en frontend)
+    try {
+      const currentUser = useAuthStore.getState().user;
+      const role = currentUser?.role;
+      if (!(role === "ADMIN_ROLE" || role === "PLATFORM_ADMIN")) {
+        return { success: false, error: "Solo administradores pueden crear cuentas" };
+      }
+    } catch (err) {
+      // si falla la validación por alguna razón, no bloquear la ejecución explícitamente
+    }
     try {
       set({ loading: true, error: null });
 
@@ -76,7 +89,7 @@ export const useAccountStore = create((set, get) => ({
       const response = await createAccountRequest(payload);
 
       // Backend: { success, account }
-      const created = response?.data?.account ?? response?.data?.created ?? null;
+      const created = response?.data?.account ?? response?.data?.created ?? response?.data ?? null;
 
       await get().getAccounts();
       set({ loading: false });
@@ -106,7 +119,7 @@ export const useAccountStore = create((set, get) => ({
       const response = await updateAccountRequest(accountId, payload);
 
       // Backend: { success: true, updated }
-      const updated = response?.data?.updated ?? null;
+      const updated = response?.data?.updated ?? response?.data?.account ?? response?.data ?? null;
 
       await get().getAccounts();
       set({ loading: false });

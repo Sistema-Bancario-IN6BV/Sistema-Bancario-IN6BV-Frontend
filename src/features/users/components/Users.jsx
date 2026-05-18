@@ -6,9 +6,17 @@ import { showError, showSuccess } from "../../../shared/utils/toast.js";
 import { CreateUserModal } from "./CreateUserModal.jsx";
 import { useAuthStore } from "../../auth/store/authStore.js";
 import { UserDetailModal } from "./UserDetailModel.jsx";
+import {
+  PlusIcon,
+  MagnifyingGlassIcon,
+  UserGroupIcon,
+  ShieldCheckIcon,
+  ClockIcon,
+  UserPlusIcon,
+} from "@heroicons/react/24/outline";
 
 const PAGE_SIZE = 8;
-const ROLE_OPTIONS = ["PLATFORM_ADMIN", "RESTAURANT_ADMIN", "CUSTOMER"];
+const ROLE_OPTIONS = ["ADMIN_ROLE", "USER_ROLE"];
 
 /* — Badge por rol — */
 const roleBadge = {
