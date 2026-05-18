@@ -64,28 +64,38 @@ export const useAuthStore = create(
                 try {
                     set({ loading: true, error: null, successMessage: null });
 
-                    const { data } = await loginRequest({ emailOrUsername, password })
-                    console.log(data)
+                    const { data } = await loginRequest({ emailOrUsername, password });
+
+                    const user = data.userDetails || null;
 
                     set({
-                        user: data.userDetails,
-                        userId: data.userDetails?.id,
+                        user,
+                        userId: user?.id,
                         token: data.token,
                         expiresAt: data.expiresAt || null,
                         loading: false,
                         isAuthenticated: true
-                    })
+                    });
 
-                    return { success: true }
-
+                    return { success: true, user, token: data.token };
                 } catch (err) {
-                    console.error("Login error: ", err);
+                    // Garantiza que el catch dispare y que el usuario vea feedback.
+                    console.error("Login error:", err);
+
                     const message =
-                        err.response?.data?.message || "Error de autenticación";
-                    set({ error: message, loading: false })
-                    return { success: false, error: message }
+                        err?.response?.data?.message ||
+                        (err?.code === "ECONNABORTED" ? "Tiempo de espera agotado. Intenta nuevamente." : null) ||
+                        err?.message ||
+                        "Error de autenticación";
+
+                    set({ error: message });
+                    return { success: false, error: message };
+                } finally {
+                    // Evita el problema típico: se queda en loading si falla/timeout.
+                    set({ loading: false });
                 }
             },
+
 
             forgotPassword: async (email) => {
                 try {

@@ -1,18 +1,18 @@
-import React from 'react'
-import { Navbar } from './Navbar'
-import { Sidebar } from './Sidebar'
+// MainContainer.jsx — REDISEÑO VISUAL · Lógica intacta
+import React from 'react';
+import { Navbar } from './Navbar';
+import { Sidebar } from './Sidebar';
 
 export const MainContainer = ({ children }) => {
-  return (
-    <div className='min-h-screen bg-bg-dark flex flex-col text-text-body'>
-      <Navbar/>
-      <div className='flex flex-1'>
-        <Sidebar/>
-
-        <main className='flex-1 p-6 md:p-8 overflow-x-hidden'>
-          {children}
-        </main>
-      </div>
-    </div>
-  )
-}
+    return (
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+            <Navbar />
+            <div className="dashboard-layout">
+                <Sidebar />
+                <main className="dashboard-main">
+                    {children}
+                </main>
+            </div>
+        </div>
+    );
+};

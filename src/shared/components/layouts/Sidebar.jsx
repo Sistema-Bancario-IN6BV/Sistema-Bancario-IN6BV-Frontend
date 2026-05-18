@@ -1,17 +1,12 @@
+// Sidebar.jsx — REDISEÑO VISUAL · Lógica intacta
 import { Link, useLocation } from "react-router-dom";
 import { useAuthStore } from "../../../features/auth/store/authStore";
 import {
     ChartBarIcon,
-    BuildingStorefrontIcon,
     UsersIcon,
     ChartPieIcon,
     ShoppingBagIcon,
-    BookOpenIcon,
     TableCellsIcon,
-    CalendarDaysIcon,
-    ReceiptPercentIcon,
-    InboxStackIcon,
-    BeakerIcon,
     HomeIcon,
 } from "@heroicons/react/24/outline";
 import { StarIcon } from "@heroicons/react/24/solid";
@@ -34,6 +29,7 @@ const customerMenuItems = [
     { label: "Productos", to: "/client/products", icon: ShoppingBagIcon },
 ];
 
+/* ── Menú por rol (idéntico al original) ── */
 const menuItemsByRole = {
     ADMIN_ROLE: adminMenuItems,
     PLATFORM_ADMIN: adminMenuItems,

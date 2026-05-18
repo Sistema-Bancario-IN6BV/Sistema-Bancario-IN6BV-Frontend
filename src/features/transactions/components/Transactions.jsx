@@ -40,9 +40,55 @@ const statusBadgeClass = (status) => {
     }
 };
 
+const IconRefresh = () => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+        <path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+        <path d="M8 16H3v5"/>
+    </svg>
+);
+
+const IconArrowDown  = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14m7-7-7 7-7-7"/></svg>
+);
+const IconArrowUp    = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 19V5m7 7-7-7-7 7"/></svg>
+);
+const IconArrowRight = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>
+);
+const IconCard       = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></svg>
+);
+
+const getTxIcon = (type) => {
+    const map = {
+        deposit:    { cls: 'deposit',    Icon: IconArrowDown  },
+        withdrawal: { cls: 'withdrawal', Icon: IconArrowUp    },
+        transfer:   { cls: 'transfer',   Icon: IconArrowRight },
+        payment:    { cls: 'payment',    Icon: IconCard       },
+    };
+    const entry = map[type] || { cls: 'transfer', Icon: IconArrowRight };
+    return (
+        <span className={`tx-icon ${entry.cls}`}>
+            <entry.Icon />
+        </span>
+    );
+};
+
+const statusBadge = (status) => {
+    if (status === 'completed' || status === 'approved')
+        return <span className="badge badge-success">{status}</span>;
+    if (status === 'pending')
+        return <span className="badge badge-warning">{status}</span>;
+    if (status === 'rejected' || status === 'failed')
+        return <span className="badge badge-danger">{status}</span>;
+    return <span className="badge badge-neutral">{status}</span>;
+};
+
 export const Transactions = () => {
     const [transactions, setTransactions] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading]           = useState(true);
 
     useEffect(() => { loadTransactions(); }, []);
 
@@ -50,8 +96,8 @@ export const Transactions = () => {
         try {
             setLoading(true);
             const res = await getTransactions({ limit: 50 });
-            const transactionsData = res.data?.transactions ?? res.data?.transaction ?? res.data ?? [];
-            setTransactions(Array.isArray(transactionsData) ? transactionsData : []);
+            const data = res.data?.transactions ?? res.data?.transaction ?? res.data ?? [];
+            setTransactions(Array.isArray(data) ? data : []);
             showSuccess('Transacciones cargadas');
         } catch (error) {
             showError('Error: ' + error.message);

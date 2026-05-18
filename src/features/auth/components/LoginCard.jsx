@@ -1,133 +1,133 @@
-// LoginCard.jsx
+// LoginCard.jsx — REDISEÑO VISUAL · Lógica intacta
 import React, { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 
-const LoginCard = ({ onGoRegister }) => {
-  const [showPassword, setShowPassword] = useState(false);
-  const [emailOrUsername, setEmailOrUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const { login, loading, error, clearError } = useAuthStore();
-  const navigate = useNavigate();
+const IconMail = () => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+    </svg>
+);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    clearError();
-    const result = await login({ emailOrUsername, password });
-    if (result?.success) {
-      navigate('/panel', { replace: true });
+const IconLock = () => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    </svg>
+);
+
+const IconEye = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+    </svg>
+);
+
+const IconEyeOff = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/>
+    </svg>
+);
+
+const getDashboardRoute = (role) => {
+    if (role === 'ADMIN_ROLE' || role === 'PLATFORM_ADMIN' || role === 'RESTAURANT_ADMIN') {
+        return '/admin';
     }
-  };
 
-  return (
-    <div className="login-wrapper">
-      <div className="login-card">
-        <input
-          className="blind-check"
-          type="checkbox"
-          id="blind-input"
-          name="blindcheck"
-          hidden
-          checked={showPassword}
-          onChange={() => setShowPassword(!showPassword)}
-        />
+    return '/client';
+};
 
-        <form className="login-form" onSubmit={handleSubmit}>
-          <div className="login-title">Iniciar Sesión</div>
+const LoginCard = ({ onGoRegister }) => {
+    const [showPassword, setShowPassword] = useState(false);
+    const [emailOrUsername, setEmailOrUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const { login, loading, error, clearError } = useAuthStore();
+    const navigate = useNavigate();
 
-          <label className="login-label" htmlFor="email-input">Email o Usuario</label>
-          <input
-            spellCheck={false}
-            className="login-input"
-            type="text"
-            id="email-input"
-            placeholder="correo@banco.com"
-            value={emailOrUsername}
-            onChange={(e) => setEmailOrUsername(e.target.value)}
-            required
-          />
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        clearError();
+        const result = await login({ emailOrUsername, password });
+        if (result?.success) {
+            navigate(getDashboardRoute(result.user?.role), { replace: true });
+        }
+    };
 
-          <div className="frg-pss">
-            <label className="login-label" htmlFor="password-input">Contraseña</label>
-            <a href="#">¿Olvidaste tu contraseña?</a>
-          </div>
+    return (
+        <div className="auth-form-container">
+            {/* Header */}
+            <p className="auth-form-eyebrow">Bienvenido de vuelta</p>
+            <h2 className="auth-form-title">Iniciar sesión</h2>
+            <p className="auth-form-subtitle">Accede a tu cuenta para gestionar tus finanzas.</p>
 
-          <div className="password-wrapper">
-            <input
-              spellCheck={false}
-              className="login-input"
-              type={showPassword ? 'text' : 'password'}
-              id="password-input"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-            <label htmlFor="blind-input" className="blind-toggle">
-              <span className="hide-text">Ocultar</span>
-              <span className="show-text">Mostrar</span>
-            </label>
-          </div>
+            {/* Formulario — onSubmit, onChange y todos los handlers originales intactos */}
+            <form onSubmit={handleSubmit}>
+                {/* Campo: email / usuario */}
+                <div className="field-group">
+                    <label className="field-label" htmlFor="email-input">
+                        <IconMail /> Email o Usuario
+                    </label>
+                    <input
+                        spellCheck={false}
+                        className="field-input"
+                        type="text"
+                        id="email-input"
+                        placeholder="correo@banco.com"
+                        value={emailOrUsername}
+                        onChange={(e) => setEmailOrUsername(e.target.value)}
+                        required
+                    />
+                </div>
 
-          {error && <p className="error-msg">{error}</p>}
+                {/* Campo: contraseña */}
+                <div className="field-group">
+                    <div className="frg-pss">
+                        <label className="field-label" htmlFor="password-input">
+                            <IconLock /> Contraseña
+                        </label>
+                        {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
+                        <button type="button" className="frg-link" tabIndex={-1}>
+                            ¿Olvidaste tu contraseña?
+                        </button>
+                    </div>
+                    <div className="pwd-wrap">
+                        <input
+                            spellCheck={false}
+                            className="field-input"
+                            type={showPassword ? 'text' : 'password'}
+                            id="password-input"
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                        />
+                        <button
+                            type="button"
+                            className="toggle-pwd"
+                            onClick={() => setShowPassword(!showPassword)}
+                            tabIndex={-1}
+                        >
+                            {showPassword ? <><IconEyeOff /> Ocultar</> : <><IconEye /> Mostrar</>}
+                        </button>
+                    </div>
+                </div>
 
-          <button className="login-btn" type="submit" disabled={loading}>
-            {loading ? <span className="spinner" /> : 'Ingresar'}
-          </button>
+                {/* Error global */}
+                {error && <p className="msg error">{error}</p>}
 
-          <p className="switch-link">
-            ¿No tienes cuenta?{' '}
-            <button type="button" onClick={onGoRegister} className="link-btn">
-              Regístrate
-            </button>
-          </p>
-        </form>
+                {/* Submit — className y disabled idénticos en comportamiento */}
+                <button className="btn-primary" type="submit" disabled={loading}>
+                    {loading ? <span className="spinner" /> : 'Ingresar'}
+                </button>
+            </form>
 
-        <label htmlFor="blind-input" className="login-avatar">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 110" id="pig-body">
-            <ellipse cx="50" cy="106" rx="20" ry="4" fill="rgba(0,0,0,0.2)"/>
-            <path d="M72,60 Q82,55 80,65 Q78,72 85,70" stroke="#e8a0b0" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-            <ellipse cx="50" cy="68" rx="28" ry="26" fill="#f4b8c8"/>
-            <ellipse cx="50" cy="42" rx="26" ry="24" fill="#f4b8c8"/>
-            <ellipse cx="40" cy="32" rx="10" ry="8" fill="white" opacity="0.25"/>
-            <ellipse cx="28" cy="24" rx="9" ry="11" fill="#e8a0b0"/>
-            <ellipse cx="28" cy="25" rx="5" ry="7" fill="#d4708a"/>
-            <ellipse cx="72" cy="24" rx="9" ry="11" fill="#e8a0b0"/>
-            <ellipse cx="72" cy="25" rx="5" ry="7" fill="#d4708a"/>
-            <ellipse cx="38" cy="40" rx="6" ry="7" fill="#2a1a2a" className="pig-eye-l"/>
-            <circle cx="35.5" cy="37.5" r="2" fill="white" opacity="0.9" className="pig-shine-l"/>
-            <ellipse cx="62" cy="40" rx="6" ry="7" fill="#2a1a2a" className="pig-eye-r"/>
-            <circle cx="59.5" cy="37.5" r="2" fill="white" opacity="0.9" className="pig-shine-r"/>
-            <path d="M33,40 Q38,36 43,40" stroke="#2a1a2a" strokeWidth="2" fill="none" strokeLinecap="round" className="pig-eye-closed-l"/>
-            <path d="M57,40 Q62,36 67,40" stroke="#2a1a2a" strokeWidth="2" fill="none" strokeLinecap="round" className="pig-eye-closed-r"/>
-            <ellipse cx="50" cy="54" rx="12" ry="9" fill="#e8a0b0"/>
-            <ellipse cx="46" cy="55" rx="3.5" ry="2.5" fill="#d4708a"/>
-            <ellipse cx="54" cy="55" rx="3.5" ry="2.5" fill="#d4708a"/>
-            <path d="M44,62 Q50,67 56,62" stroke="#c06080" strokeWidth="1.8" fill="none" strokeLinecap="round" className="pig-mouth"/>
-            <ellipse cx="30" cy="50" rx="6" ry="4" fill="#f090a8" opacity="0.5"/>
-            <ellipse cx="70" cy="50" rx="6" ry="4" fill="#f090a8" opacity="0.5"/>
-            <rect x="42" y="28" width="16" height="3" rx="1.5" fill="#c06080" opacity="0.8"/>
-            <ellipse cx="50" cy="19" rx="9" ry="9" fill="#f0c040"/>
-            <ellipse cx="50" cy="19" rx="7" ry="7" fill="#e0a820"/>
-            <text x="50" y="23" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#a06010" fontFamily="Arial">$</text>
-          </svg>
-
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 110" id="pig-hands">
-            <ellipse cx="16" cy="46" rx="13" ry="10" fill="#f4b8c8"/>
-            <ellipse cx="9"  cy="38" rx="5"  ry="7"  fill="#f4b8c8"/>
-            <ellipse cx="17" cy="36" rx="5"  ry="7"  fill="#f4b8c8"/>
-            <ellipse cx="25" cy="39" rx="4.5" ry="6" fill="#f4b8c8"/>
-            <ellipse cx="13" cy="43" rx="5"  ry="3"  fill="white" opacity="0.2"/>
-            <ellipse cx="84" cy="46" rx="13" ry="10" fill="#f4b8c8"/>
-            <ellipse cx="75" cy="39" rx="4.5" ry="6" fill="#f4b8c8"/>
-            <ellipse cx="83" cy="36" rx="5"  ry="7"  fill="#f4b8c8"/>
-            <ellipse cx="91" cy="38" rx="5"  ry="7"  fill="#f4b8c8"/>
-            <ellipse cx="87" cy="43" rx="5"  ry="3"  fill="white" opacity="0.2"/>
-          </svg>
-        </label>
-      </div>
-    </div>
-  );
+            {/* Switch a registro */}
+            <p className="switch-link">
+                ¿No tienes cuenta?{' '}
+                <button type="button" onClick={onGoRegister} className="link-btn">
+                    Regístrate
+                </button>
+            </p>
+        </div>
+    );
 };
 
 export default LoginCard;

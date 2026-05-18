@@ -64,76 +64,64 @@ const Initials = ({ name, surname }) => {
 export const Users = () => {
     /* — Store y estado originales intactos — */
     const { users, loading, error, fetchUsers, updateUserRole } = useUserManagmentStore();
-    const registerUser = useAuthStore((state) => state.register)
-    const currentUser = useAuthStore((state) => state.user)
+    const registerUser  = useAuthStore((state) => state.register);
+    const currentUser   = useAuthStore((state) => state.user);
 
-    const [search, setSearch] = useState("");
-    const [roleFilter, setRoleFilter] = useState("ALL");
-    const [page, setPage] = useState(1);
-    const [openCreateModal, setOpenCreateModal] = useState(false);
-    const [openDetailModal, setOpenDetailModal] = useState(false)
-    const [selectedUser, setSelectedUser] = useState(null);
+    const [search,           setSearch]           = useState("");
+    const [roleFilter,       setRoleFilter]       = useState("ALL");
+    const [page,             setPage]             = useState(1);
+    const [openCreateModal,  setOpenCreateModal]  = useState(false);
+    const [openDetailModal,  setOpenDetailModal]  = useState(false);
+    const [selectedUser,     setSelectedUser]     = useState(null);
 
     useEffect(() => { fetchUsers(); }, [fetchUsers]);
     useEffect(() => { if (error) showError(error); }, [error]);
 
     /* — Filtrado y paginación originales intactos — */
     const filteredUsers = useMemo(() => {
-        const normalizedSearch = search.trim().toLowerCase();
+        const norm = search.trim().toLowerCase();
         return users.filter((u) => {
-            const fullName = `${u.name || ""} ${u.surname || ""}`
-                .trim()
-                .toLowerCase();
-
+            const fullName = `${u.name || ""} ${u.surname || ""}`.trim().toLowerCase();
             const username = (u.username || "").toLowerCase();
-            const role = (u.role || "").toUpperCase();
-
-            const matchesSearch =
-                !normalizedSearch ||
-                fullName.includes(normalizedSearch) ||
-                username.includes(normalizedSearch);
-
-            const matchesRole =
-                roleFilter === "ALL" ? true : role === roleFilter.toUpperCase();
-
+            const role     = (u.role || "").toUpperCase();
+            const matchesSearch = !norm || fullName.includes(norm) || username.includes(norm);
+            const matchesRole   = roleFilter === "ALL" ? true : role === roleFilter.toUpperCase();
             return matchesRole && matchesSearch;
-        })
-    }, [users, search, roleFilter])
+        });
+    }, [users, search, roleFilter]);
 
-    const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
-    const currentPage = Math.min(page, totalPages);
-
+    const totalPages    = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
+    const currentPage   = Math.min(page, totalPages);
     const paginatedUsers = useMemo(() => {
         const start = (currentPage - 1) * PAGE_SIZE;
         return filteredUsers.slice(start, start + PAGE_SIZE);
-    }, [filteredUsers, currentPage])
+    }, [filteredUsers, currentPage]);
 
     /* — Handlers originales intactos — */
     const handleCreate = async (formData) => {
-        const res = await registerUser(formData)
-        console.log(res)
+        const res = await registerUser(formData);
         if (res.success) {
-            showSuccess("Usuairo creado. Se envió un correo de verificación.");
+            showSuccess("Usuario creado. Se envió un correo de verificación.");
             await fetchUsers(undefined, { force: true });
             return true;
         }
-        showError(res.error || "No se puedo crear el usuario");
+        showError(res.error || "No se pudo crear el usuario");
         return false;
-    }
+    };
 
     const handleSaveRole = async (user, newRole) => {
         const res = await updateUserRole(user.id, newRole);
         if (res.success) {
-            showSuccess("Rol actualizado correctamente")
+            showSuccess("Rol actualizado correctamente");
             setOpenDetailModal(false);
             setSelectedUser(null);
         } else {
             showError(res.error || "No se pudo actualizar el rol");
         }
-    }
+    };
 
     const handleOpenDetail = (user) => {
-        setSelectedUser(user)
+        setSelectedUser(user);
         setOpenDetailModal(true);
     };
 

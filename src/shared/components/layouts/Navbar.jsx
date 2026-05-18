@@ -4,7 +4,7 @@ import imgLogo from "../../../assets/img/LogoTipo.png";
 import { AvatarUser } from "../ui/AvatarUser";
 
 export const Navbar = () => {
-        return (
+    return (
         <nav style={{ backgroundColor: "var(--color-bg-sidebar)" }} className="border-b shadow-lg sticky top-0 z-50 text-white">
             <div className="w-full px-6 md:px-8 h-20 flex items-center justify-between">
                 <div className="flex items-center gap-4">
