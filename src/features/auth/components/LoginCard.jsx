@@ -27,6 +27,14 @@ const IconEyeOff = () => (
     </svg>
 );
 
+const getDashboardRoute = (role) => {
+    if (role === 'ADMIN_ROLE' || role === 'PLATFORM_ADMIN' || role === 'RESTAURANT_ADMIN') {
+        return '/admin';
+    }
+
+    return '/client';
+};
+
 const LoginCard = ({ onGoRegister }) => {
     const [showPassword, setShowPassword] = useState(false);
     const [emailOrUsername, setEmailOrUsername] = useState('');
@@ -39,7 +47,7 @@ const LoginCard = ({ onGoRegister }) => {
         clearError();
         const result = await login({ emailOrUsername, password });
         if (result?.success) {
-            navigate('/panel', { replace: true });
+            navigate(getDashboardRoute(result.user?.role), { replace: true });
         }
     };
 

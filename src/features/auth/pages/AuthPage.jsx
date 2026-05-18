@@ -18,6 +18,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Navigate } from "react-router-dom";
+import paper from "paper";
 import LoginCard    from "../components/LoginCard";
 import RegisterCard from "../components/RegisterCard";
 import { useAuthStore } from "../store/authStore";
@@ -40,35 +41,23 @@ const BankLogoIcon = () => (
 function usePaperCanvas(canvasRef) {
     useEffect(() => {
         if (!canvasRef.current) return;
-        let cleaned  = false;
-        let scriptEl = null;
+        let cleaned = false;
 
         const init = () => {
             if (cleaned || !canvasRef.current) return;
             initPaper(canvasRef.current);
         };
 
-        if (window.paper?.setup) {
-            init();
-        } else {
-            scriptEl = document.createElement("script");
-            scriptEl.src =
-                "https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.17/paper-full.min.js";
-            scriptEl.async = true;
-            scriptEl.onload = init;
-            document.head.appendChild(scriptEl);
-        }
+        if (paper?.setup) init();
 
         return () => {
             cleaned = true;
             try {
-                if (window.paper?.project) {
-                    window.paper.project.clear();
-                    window.paper.view?.remove();
+                if (paper?.project) {
+                    paper.project.clear();
+                    paper.view?.remove();
                 }
             } catch (_) {}
-            if (scriptEl && document.head.contains(scriptEl))
-                document.head.removeChild(scriptEl);
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -76,7 +65,6 @@ function usePaperCanvas(canvasRef) {
 
 function initPaper(canvas) {
     try {
-        const paper = window.paper;
         paper.setup(canvas);
         const { Path, Group, view } = paper;
 
@@ -155,7 +143,11 @@ function initPaper(canvas) {
    ══════════════════════════════════════ */
 export const AuthPage = () => {
     const [view, setView] = useState("login");
+    const canvasRef = useRef(null);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const isRegister = view === "register";
+
+    usePaperCanvas(canvasRef);
 
     return (
         <div className="auth-root">

@@ -66,16 +66,18 @@ export const useAuthStore = create(
 
                     const { data } = await loginRequest({ emailOrUsername, password });
 
+                    const user = data.userDetails || null;
+
                     set({
-                        user: data.userDetails,
-                        userId: data.userDetails?.id,
+                        user,
+                        userId: user?.id,
                         token: data.token,
                         expiresAt: data.expiresAt || null,
                         loading: false,
                         isAuthenticated: true
                     });
 
-                    return { success: true };
+                    return { success: true, user, token: data.token };
                 } catch (err) {
                     // Garantiza que el catch dispare y que el usuario vea feedback.
                     console.error("Login error:", err);

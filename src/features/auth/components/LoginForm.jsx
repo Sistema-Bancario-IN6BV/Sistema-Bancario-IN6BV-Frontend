@@ -3,6 +3,14 @@ import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
+const getDashboardRoute = (role) => {
+    if (role === 'ADMIN_ROLE' || role === 'PLATFORM_ADMIN' || role === 'RESTAURANT_ADMIN') {
+        return '/admin';
+    }
+
+    return '/client';
+};
+
 export const LoginForm = ({ onForgot, onRegister }) => {
     const navigate = useNavigate();
     const [form, setForm] = useState({ emailOrUsername: '', password: '' });
@@ -26,7 +34,7 @@ export const LoginForm = ({ onForgot, onRegister }) => {
 
         const res = await login(form);
         if (res.success) {
-            navigate('/panel');
+            navigate(getDashboardRoute(res.user?.role));
             toast.success('¡Bienvenido al sistema bancario!', {
                 duration: 2000,
                 style: {
