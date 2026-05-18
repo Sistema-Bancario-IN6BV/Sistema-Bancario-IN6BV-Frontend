@@ -14,68 +14,87 @@ import {
     BeakerIcon,
     HomeIcon,
 } from "@heroicons/react/24/outline";
+import { StarIcon } from "@heroicons/react/24/solid";
+import { useEffect, useState } from 'react';
+import { getFavorites } from '../../api/admin';
+
+const adminMenuItems = [
+    { label: "Dashboard", to: "/admin", icon: HomeIcon },
+    { label: "Cuentas", to: "/admin/accounts", icon: ChartBarIcon },
+    { label: "Transacciones", to: "/admin/transactions", icon: TableCellsIcon },
+    { label: "Usuarios", to: "/admin/users", icon: UsersIcon },
+    { label: "Productos", to: "/admin/products", icon: ShoppingBagIcon },
+    // Reportes eliminado — no disponible
+];
+
+const customerMenuItems = [
+    { label: "Dashboard", to: "/client", icon: HomeIcon },
+    { label: "Cuentas", to: "/client/accounts", icon: ChartBarIcon },
+    { label: "Transacciones", to: "/client/transactions", icon: TableCellsIcon },
+    { label: "Productos", to: "/client/products", icon: ShoppingBagIcon },
+];
 
 const menuItemsByRole = {
-    PLATFORM_ADMIN: [
-        { label: "Inicio", to: "/panel", icon: ChartBarIcon },
-        { label: "Restaurantes", to: "/panel/restaurants", icon: BuildingStorefrontIcon },
-        { label: "Usuarios", to: "/panel/users", icon: UsersIcon },
-        { label: "Reportes", to: "/panel/reports", icon: ChartPieIcon },
-    ],
-    RESTAURANT_ADMIN: [
-        { label: "Inicio", to: "/panel", icon: ChartBarIcon },
-        { label: "Pedidos", to: "/panel/orders", icon: ShoppingBagIcon },
-        { label: "Menú", to: "/panel/menu", icon: BookOpenIcon },
-        { label: "Mesas", to: "/panel/tables", icon: TableCellsIcon },
-        { label: "Reservas", to: "/panel/reservations", icon: CalendarDaysIcon },
-        { label: "Facturas", to: "/panel/invoices", icon: ReceiptPercentIcon },
-        { label: "Inventario", to: "/panel/inventory", icon: InboxStackIcon },
-        { label: "Ingredientes", to: "/panel/ingredients", icon: BeakerIcon },
-        { label: "Reportes", to: "/panel/reports", icon: ChartPieIcon },
-    ],
-    CUSTOMER: [
-        { label: "Inicio", to: "/home", icon: HomeIcon },
-        { label: "Restaurantes", to: "/restaurants", icon: BuildingStorefrontIcon },
-        { label: "Mis Reservas", to: "/panel/reservations", icon: CalendarDaysIcon },
-        { label: "Mis Pedidos", to: "/panel/orders", icon: ShoppingBagIcon },
-        { label: "Mis Facturas", to: "/panel/invoices", icon: ReceiptPercentIcon },
-    ],
+    ADMIN_ROLE: adminMenuItems,
+    PLATFORM_ADMIN: adminMenuItems,
+    RESTAURANT_ADMIN: adminMenuItems,
+    USER_ROLE: customerMenuItems,
+    CUSTOMER: customerMenuItems,
 };
 
 export const Sidebar = () => {
-    const location = useLocation();
-    const user = useAuthStore((state) => state.user);
-    const role = user?.role || "CUSTOMER";
+    const location  = useLocation();
+    const user      = useAuthStore((state) => state.user);
+    const role      = user?.role || "USER_ROLE";
+    const menuItems = menuItemsByRole[role] || menuItemsByRole.USER_ROLE;
+    const [favorites, setFavorites] = useState([]);
 
-    const menuItems = menuItemsByRole[role] || menuItemsByRole.CUSTOMER;
+    useEffect(() => {
+        let mounted = true;
+        (async () => {
+            try {
+                const res = await getFavorites();
+                if (!mounted) return;
+                setFavorites(res?.data || []);
+            } catch (err) {
+                // ignore
+            }
+        })();
+        return () => { mounted = false; };
+    }, []);
+
+    // Quick-add form moved to Dashboard for better UX
 
     return (
-        <aside className="group w-20 hover:w-64 transition-all duration-300 ease-in-out bg-bg-card border-r border-accent/10 h-[calc(100vh-5rem)] sticky top-20 py-5 px-3 shadow-[4px_0_24px_rgba(0,0,0,0.4)] z-40 overflow-x-hidden overflow-y-auto">
-            <nav>
-                <ul className="space-y-2">
-                    {menuItems.map((item) => {
-                        const active = location.pathname === item.to;
-                        return (
-                            <li key={item.to}>
-                                <Link
-                                    to={item.to}
-                                    className={`flex items-center gap-4 p-3 rounded-xl text-sm transition-all duration-300 tracking-wide font-semibold outline-none ${
-                                        active
-                                            ? "bg-accent/10 text-accent border border-accent/30 shadow-[inset_0_1px_4px_rgba(245,200,66,0.1)]"
-                                            : "text-text-muted hover:text-text-body hover:bg-bg-page border border-transparent"
-                                    }`}
-                                >
-                                    <span className="flex items-center justify-center w-6 h-6 shrink-0">
-                                        <item.icon className="w-6 h-6" />
-                                    </span>
-                                    <span className="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                        {item.label}
-                                    </span>
-                                </Link>
-                            </li>
-                        );
-                    })}
-                </ul>
+        <aside className="sidebar">
+            <nav className="sidebar-nav">
+                {favorites && favorites.length > 0 && (
+                    <div className="mb-3">
+                        <div className="text-xs text-text-on-dark-muted px-2 mb-2">Favoritos</div>
+                        {favorites.map((f) => (
+                            <Link key={f._id || f.id || f.accountId} to={`/client/accounts?fav=${f.accountId}`} className="sidebar-item">
+                                <StarIcon className="sidebar-item-icon text-yellow-400" />
+                                <span className="sidebar-item-label">{f.alias || f.accountNumber || f.accountId}</span>
+                            </Link>
+                        ))}
+                        <div className="sidebar-divider" />
+                    </div>
+                )}
+                {/* Quick-add moved to Dashboard */}
+                {menuItems.map((item) => {
+                    const active = location.pathname === item.to;
+
+                    return (
+                        <Link
+                            key={item.to}
+                            to={item.to}
+                            className={`sidebar-item ${active ? 'active' : ''}`}
+                        >
+                            <item.icon className="sidebar-item-icon" />
+                            <span className="sidebar-item-label">{item.label}</span>
+                        </Link>
+                    );
+                })}
             </nav>
         </aside>
     );

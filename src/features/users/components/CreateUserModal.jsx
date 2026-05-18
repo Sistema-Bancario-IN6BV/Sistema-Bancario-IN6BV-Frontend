@@ -25,7 +25,12 @@ export const CreateUserModal = ({
         formData.append("username", values.username);
         formData.append("email", values.email);
         formData.append("password", values.password);
-        formData.append("phone", values.phone);
+        formData.append("phone",   values.phone);
+        // Campos administrativos
+        if (values.dpi) formData.append("dpi", values.dpi);
+        if (values.address) formData.append("address", values.address);
+        if (values.job) formData.append("job", values.job);
+        if (values.monthlyIncome) formData.append("monthlyIncome", values.monthlyIncome);
         if (values.profilePicture?.[0]) {
             formData.append("profilePicture", values.profilePicture[0]);
         }
@@ -82,6 +87,102 @@ export const CreateUserModal = ({
                                 <p className="text-error text-xs font-semibold mt-1">{errors.surname.message}</p>
                             )}
                         </div>
+
+                        {/* DPI + Dirección */}
+                        <div className="modal-grid-2">
+                            <div className="modal-field">
+                                <label className="modal-label">DPI (13 dígitos)</label>
+                                <input
+                                    className="modal-input"
+                                    type="text"
+                                    placeholder="1234567890101"
+                                    {...register("dpi", {
+                                        pattern: { value: /^[0-9]{13}$/, message: "Debe ser un número de 13 dígitos" },
+                                    })}
+                                />
+                                {errors.dpi && <p className="modal-field-error">{errors.dpi.message}</p>}
+                            </div>
+                            <div className="modal-field">
+                                <label className="modal-label">Dirección</label>
+                                <input
+                                    className="modal-input"
+                                    type="text"
+                                    placeholder="Zona 10, Ciudad"
+                                    {...register("address")}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Contraseña + Confirmar */}
+                        <div className="modal-grid-2">
+                            <div className="modal-field">
+                                <label className="modal-label">Contraseña</label>
+                                <input
+                                    className="modal-input"
+                                    type="password"
+                                    placeholder="Mínimo 8 caracteres"
+                                    {...register("password", {
+                                        required: "La contraseña es obligatoria",
+                                        minLength: { value: 8, message: "Debe tener al menos 8 caracteres" },
+                                    })}
+                                />
+                                {errors.password && <p className="modal-field-error">{errors.password.message}</p>}
+                            </div>
+                            <div className="modal-field">
+                                <label className="modal-label">Confirmar contraseña</label>
+                                <input
+                                    className="modal-input"
+                                    type="password"
+                                    placeholder="Repite la contraseña"
+                                    {...register("confirmPassword", {
+                                        required: "Debe confirmar su contraseña",
+                                        validate: {
+                                            matchesPassword: (v) =>
+                                                v === getValues("password") || "Las contraseñas no coinciden",
+                                        },
+                                    })}
+                                />
+                                {errors.confirmPassword && <p className="modal-field-error">{errors.confirmPassword.message}</p>}
+                            </div>
+                        </div>
+
+                        {/* Foto de perfil */}
+                        <div className="modal-field">
+                            <label className="modal-label">Foto de perfil (opcional)</label>
+                            <input
+                                className="file-input"
+                                type="file"
+                                accept="image/*"
+                                {...register("profilePicture")}
+                            />
+                        </div>
+
+                        {/* Trabajo / Ingreso mensual */}
+                        <div className="modal-grid-2">
+                            <div className="modal-field">
+                                <label className="modal-label">Trabajo / Puesto</label>
+                                <input
+                                    className="modal-input"
+                                    type="text"
+                                    placeholder="Desarrollador"
+                                    {...register("job")}
+                                />
+                            </div>
+                            <div className="modal-field">
+                                <label className="modal-label">Ingreso mensual (Q)</label>
+                                <input
+                                    className="modal-input"
+                                    type="number"
+                                    placeholder="5000"
+                                    {...register("monthlyIncome", {
+                                        valueAsNumber: true,
+                                        validate: v => (v === undefined || v === null || v === "" || Number(v) >= 0) || "Ingreso inválido",
+                                    })}
+                                />
+                            </div>
+                        </div>
+
+                        {error && <p className="msg error">{error}</p>}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

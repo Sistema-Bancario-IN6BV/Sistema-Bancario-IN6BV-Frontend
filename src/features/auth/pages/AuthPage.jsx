@@ -7,6 +7,20 @@ import { useAuthStore } from "../store/authStore";
 export const AuthPage = () => {
     const [view, setView] = useState("login");
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+<<<<<<< Updated upstream
+=======
+    const userRole = useAuthStore((state) => state.user?.role);
+    const canvasRef       = useRef(null);
+
+    usePaperCanvas(canvasRef);
+
+    if (isAuthenticated) {
+        const destination = userRole === "ADMIN_ROLE" ? "/admin" : "/client";
+        return <Navigate to={destination} replace />;
+    }
+
+    const isRegister = view === "register";
+>>>>>>> Stashed changes
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-bg-dark p-4 relative overflow-hidden">

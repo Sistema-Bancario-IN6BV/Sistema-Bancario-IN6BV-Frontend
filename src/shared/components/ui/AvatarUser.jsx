@@ -8,7 +8,6 @@ export const AvatarUser = () => {
     const [open, setOpen] = useState(false);
     const dropdownRef = useRef(null);
     const navigate = useNavigate();
-
     const toggleMenu = () => setOpen((prev) => !prev);
 
     useEffect(() => {
@@ -73,59 +72,37 @@ export const AvatarUser = () => {
                         className="fixed inset-0 z-10"
                         onClick={() => setOpen(false)}
                     />
-                    <div className="absolute right-0 mt-2 w-56 bg-bg-card border border-accent/20 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.6)] animate-fadeIn z-20 overflow-hidden">
-                        <div className="px-5 py-4 border-b border-accent/15 bg-bg-page/40">
-                            <p className="font-semibold text-text-body text-[15px] truncate">
-                                {user?.name || user?.username}
-                            </p>
-                            <p className="text-xs text-text-muted truncate mt-0.5 tracking-wide">
-                                {user?.email}
-                            </p>
+                    <div style={{ backgroundColor: 'var(--color-bg-sidebar)' }} className="absolute right-0 mt-2 w-56 border border-white/10 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.6)] animate-fadeIn z-20 overflow-hidden text-white">
+                        <div className="px-5 py-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                            <p className="font-semibold text-white text-[15px] truncate">{user?.name || user?.username}</p>
+                            <p className="text-xs text-white/80 truncate mt-0.5 tracking-wide">{user?.email}</p>
                         </div>
-                        <ul className="p-2 text-sm text-text-body font-medium tracking-wide">
+                        <ul className="p-2 text-sm text-white font-medium tracking-wide">
                             <li>
-                                <Link
-                                    to="/perfil"
-                                    className="flex items-center gap-2 w-full p-2.5 rounded-lg hover:bg-accent/10 hover:text-accent transition-colors mb-1"
-                                >
-                                    Mi Perfil
-                                </Link>
+                                <Link to="/perfil" className="flex items-center gap-2 w-full p-2.5 rounded-lg hover:bg-white/10 transition-colors mb-1">Mi Perfil</Link>
                             </li>
                             <li>
-                                <Link
-                                    to="/notificaciones"
-                                    className="flex items-center gap-2 w-full p-2.5 rounded-lg hover:bg-accent/10 hover:text-accent transition-colors mb-1"
-                                >
-                                    Notificaciones
-                                </Link>
+                                <Link to="/notificaciones" className="flex items-center gap-2 w-full p-2.5 rounded-lg hover:bg-white/10 transition-colors mb-1">Notificaciones</Link>
                             </li>
-                            <div className="border-t border-accent/10 my-1" />
-                            <li>
-                                <Link
-                                    to="/panel"
-                                    className="flex items-center gap-2 w-full p-2.5 rounded-lg hover:bg-accent/10 hover:text-accent transition-colors mb-1"
-                                >
-                                    Panel
-                                </Link>
-                            </li>
-                            {user?.role === "PLATFORM_ADMIN" && (
-                                <li>
-                                    <Link
-                                        to="/panel/users"
-                                        className="block w-full p-2.5 rounded-lg hover:bg-accent/10 hover:text-accent transition-colors mb-2"
-                                    >
-                                        Usuarios
-                                    </Link>
-                                </li>
+
+                            <div className="border-t border-white/10 my-1" />
+
+                            {(user?.role === "PLATFORM_ADMIN" || user?.role === "RESTAURANT_ADMIN") && (
+                                <>
+                                    <li>
+                                        <Link to="/dashboard" className="flex items-center gap-2 w-full p-2.5 rounded-lg hover:bg-white/10 transition-colors mb-1">Dashboard</Link>
+                                    </li>
+                                    {user?.role === "PLATFORM_ADMIN" && (
+                                        <li>
+                                            <Link to="/dashboard/users" className="block w-full p-2.5 rounded-lg hover:bg-white/10 transition-colors mb-2">Usuarios</Link>
+                                        </li>
+                                    )}
+                                    <div className="border-t border-white/10 my-1" />
+                                </>
                             )}
-                            <div className="border-t border-accent/10 my-1" />
+
                             <li>
-                                <button
-                                    onClick={handleLogout}
-                                    className="block w-full text-left p-2.5 rounded-lg hover:bg-error/10 text-error transition-colors mt-1 font-semibold"
-                                >
-                                    Cerrar sesión
-                                </button>
+                                <button onClick={handleLogout} className="block w-full text-left p-2.5 rounded-lg hover:bg-white/10 transition-colors mt-1 font-semibold">Cerrar sesión</button>
                             </li>
                         </ul>
                     </div>

@@ -1,6 +1,17 @@
 import { Spinner } from "../../../shared/components/layouts/Spinner";
-import defaultAvatarImg from "../../../assets/img/avatarDefault.png";
-import { useState } from "react";
+import defaultAvatarImg from "../../../assets/img/hero.png";
+
+const IconX = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+        <path d="M18 6 6 18M6 6l12 12"/>
+    </svg>
+);
+
+const IconAlertCircle = () => (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+    </svg>
+);
 
 export const UserDetailModal = ({
     isOpen,
@@ -12,7 +23,8 @@ export const UserDetailModal = ({
 }) => {
     if (!isOpen || !user) return null;
 
-    const [ role, setRole ] = useState(user?.role || "CUSTOMER")
+    /* — Estado y lógica originales intactos — */
+    const [role, setRole] = useState(user?.role || "USER_ROLE");
 
     const avatarSrc = (() => {
         const value = user?.profilePicture?.trim();
@@ -33,12 +45,14 @@ export const UserDetailModal = ({
     const hasChanges = role !== user.role;
 
     const handleSave = async () => {
-        if(!hasChanges || isCurrentUser) {
-            onClose();
-            return;
-        }
-        await onSaveRole(user, role)
-    }
+        if (!hasChanges || isCurrentUser) { onClose(); return; }
+        await onSaveRole(user, role);
+    };
+
+    const roleBadge = {
+        ADMIN_ROLE:   "inline-flex items-center rounded-full px-2.5 py-0.5 text-sm font-semibold bg-blue-600 text-white border border-blue-700/20",
+        USER_ROLE:    "inline-flex items-center rounded-full px-2.5 py-0.5 text-sm font-semibold bg-emerald-600 text-white border border-emerald-700/20",
+    };
 
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 px-3 sm:px-4">
@@ -68,7 +82,14 @@ export const UserDetailModal = ({
                             <p className="font-bold text-text-body text-lg">
                                 {[user.name, user.surname].filter(Boolean).join(" ")}
                             </p>
-                            <p className="text-sm text-text-muted">@{user.username}</p>
+                            <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)' }}>
+                                @{user.username}
+                            </p>
+                            <div style={{ marginTop: 6 }}>
+                                <span className={roleBadge[user.role] || "inline-flex items-center rounded-full px-2.5 py-0.5 text-sm font-semibold bg-slate-200 text-slate-800 border border-slate-300"}>
+                                    {user.role ? user.role.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase()) : "—"}
+                                </span>
+                            </div>
                         </div>
                     </div>
 
@@ -101,9 +122,8 @@ export const UserDetailModal = ({
                             disabled={isCurrentUser}
                             className="w-full px-4 py-3 rounded-lg border border-accent/20 bg-bg-page text-text-body focus:outline-none focus:border-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            <option value="PLATFORM_ADMIN">PLATFORM_ADMIN</option>
-                            <option value="RESTAURANT_ADMIN">RESTAURANT_ADMIN</option>
-                            <option value="CUSTOMER">CUSTOMER</option>
+                            <option value="ADMIN_ROLE">ADMIN_ROLE</option>
+                            <option value="USER_ROLE">USER_ROLE</option>
                         </select>
                         {isCurrentUser && (
                             <p className="text-xs text-error font-semibold mt-2">

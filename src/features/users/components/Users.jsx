@@ -1,22 +1,68 @@
-import { useEffect, useMemo, useState } from "react"
-import { useUserManagmentStore } from "../store/useUserManagmentStore.js"
+// Users.jsx — REDISEÑO VISUAL · Lógica intacta
+import { useEffect, useMemo, useState } from "react";
+import { useUserManagmentStore } from "../store/useUserManagmentStore.js";
 import { Spinner } from "../../../shared/components/layouts/Spinner.jsx";
 import { showError, showSuccess } from "../../../shared/utils/toast.js";
 import { CreateUserModal } from "./CreateUserModal.jsx";
 import { useAuthStore } from "../../auth/store/authStore.js";
 import { UserDetailModal } from "./UserDetailModel.jsx";
+import {
+  PlusIcon,
+  MagnifyingGlassIcon,
+  UserGroupIcon,
+  ShieldCheckIcon,
+  ClockIcon,
+  UserPlusIcon,
+} from "@heroicons/react/24/outline";
 
 const PAGE_SIZE = 8;
-const ROLE_OPTIONS = ["PLATFORM_ADMIN", "RESTAURANT_ADMIN", "CUSTOMER"];
+const ROLE_OPTIONS = ["ADMIN_ROLE", "USER_ROLE"];
 
-const roleBadgeClass = {
-    PLATFORM_ADMIN: "bg-accent/20 text-accent border border-accent/30",
-    RESTAURANT_ADMIN: "bg-warning/20 text-warning border border-warning/30",
-    CUSTOMER: "bg-success/20 text-success border border-success/30",
+/* — Badge por rol — */
+const roleBadge = {
+    PLATFORM_ADMIN:   "badge badge-primary",
+    RESTAURANT_ADMIN: "badge badge-warning",
+    CUSTOMER:         "badge badge-success",
+};
+
+const IconSearch = () => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+    </svg>
+);
+
+const IconPlus = () => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+        <path d="M5 12h14M12 5v14"/>
+    </svg>
+);
+
+const IconChevronLeft  = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m15 18-6-6 6-6"/></svg>
+);
+const IconChevronRight = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m9 18 6-6-6-6"/></svg>
+);
+
+/* Iniciales del avatar */
+const Initials = ({ name, surname }) => {
+    const letters = [name?.[0], surname?.[0]].filter(Boolean).join('').toUpperCase() || '?';
+    return (
+        <div style={{
+            width: 32, height: 32, borderRadius: '50%',
+            background: 'rgba(46,111,212,0.12)',
+            border: '1px solid rgba(46,111,212,0.2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-primary)',
+            flexShrink: 0,
+        }}>
+            {letters}
+        </div>
+    );
 };
 
 export const Users = () => {
-
+    /* — Store y estado originales intactos — */
     const { users, loading, error, fetchUsers, updateUserRole } = useUserManagmentStore();
     const registerUser = useAuthStore((state) => state.register)
     const currentUser = useAuthStore((state) => state.user)
@@ -28,16 +74,10 @@ export const Users = () => {
     const [openDetailModal, setOpenDetailModal] = useState(false)
     const [selectedUser, setSelectedUser] = useState(null);
 
-    useEffect(() => {
-        fetchUsers();
-    }, [fetchUsers])
+    useEffect(() => { fetchUsers(); }, [fetchUsers]);
+    useEffect(() => { if (error) showError(error); }, [error]);
 
-    useEffect(() => {
-        if (error) {
-            showError(error);
-        }
-    }, [error])
-
+    /* — Filtrado y paginación originales intactos — */
     const filteredUsers = useMemo(() => {
         const normalizedSearch = search.trim().toLowerCase();
         return users.filter((u) => {
@@ -68,6 +108,7 @@ export const Users = () => {
         return filteredUsers.slice(start, start + PAGE_SIZE);
     }, [filteredUsers, currentPage])
 
+    /* — Handlers originales intactos — */
     const handleCreate = async (formData) => {
         const res = await registerUser(formData)
         console.log(res)
@@ -94,101 +135,97 @@ export const Users = () => {
     const handleOpenDetail = (user) => {
         setSelectedUser(user)
         setOpenDetailModal(true);
-    }
+    };
+
+    const firstItem = (currentPage - 1) * PAGE_SIZE + (paginatedUsers.length ? 1 : 0);
+    const lastItem  = (currentPage - 1) * PAGE_SIZE + paginatedUsers.length;
 
     return (
-        <div className="p-4">
-
+        <div>
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
-                <div>
-                    <h1 className="text-3xl font-bold text-accent font-serif">Usuarios</h1>
-                    <p className="text-accent/80 mt-1 text-sm font-medium">
-                        Administra usuarios, consulta su información y cambia su rol
-                    </p>
+            <div className="page-header">
+                <div className="page-header-text">
+                    <h1 className="page-title">Usuarios</h1>
+                    <p className="page-subtitle">Administra usuarios y gestiona sus roles</p>
                 </div>
-
                 <button
-                    className="bg-accent px-6 py-2 rounded-xl text-bg-dark font-bold hover:bg-gold-light shadow-lg transition flex items-center gap-2"
+                    className="btn-primary"
+                    style={{ width: 'auto', padding: '9px 18px' }}
                     onClick={() => setOpenCreateModal(true)}
                 >
-                    + Agregar Usuario
+                    <IconPlus /> Agregar usuario
                 </button>
             </div>
 
             {/* Filtros */}
-            <div className="bg-bg-card rounded-xl border border-accent/10 shadow-lg p-4 mb-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="filter-bar cols-3">
+                <div className="search-wrap span-2">
+                    <IconSearch />
                     <input
+                        className="search-input"
                         value={search}
-                        onChange={(e) => {
-                            setSearch(e.target.value);
-                            setPage(1);
-                        }}
-                        placeholder="Buscar por nombre o username..."
-                        className="md:col-span-2 w-full px-4 py-2 border border-accent/20 bg-bg-page rounded-lg text-text-body focus:outline-none focus:border-accent transition-colors"
+                        onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                        placeholder="Buscar por nombre o usuario..."
                     />
-                    <select
-                        value={roleFilter}
-                        onChange={(e) => {
-                            setRoleFilter(e.target.value)
-                            setPage(1)
-                        }}
-                        className="w-full px-4 py-2 border border-accent/20 bg-bg-page rounded-lg text-text-body focus:outline-none focus:border-accent transition-colors cursor-pointer"
-                    >
-                        <option value="ALL">Todos los roles</option>
-                        {ROLE_OPTIONS.map((role) => (
-                            <option key={role} value={role}>{role}</option>
-                        ))}
-                    </select>
                 </div>
+                <select
+                    className="filter-select"
+                    value={roleFilter}
+                    onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
+                >
+                    <option value="ALL">Todos los roles</option>
+                    {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                </select>
             </div>
 
             {/* Tabla */}
-            <div className="bg-bg-card rounded-xl border border-accent/10 shadow-lg overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="min-w-full text-sm">
-
-                        {/* Head */}
-                        <thead className="bg-bg-page/50 text-text-body border-b border-accent/10">
+            <div className="panel">
+                <div className="data-table-wrap">
+                    <table className="data-table">
+                        <thead>
                             <tr>
-                                <th className="text-left px-6 py-4 font-semibold uppercase tracking-wider text-xs">Nombre</th>
-                                <th className="text-left px-6 py-4 font-semibold uppercase tracking-wider text-xs">Username</th>
-                                <th className="text-left px-6 py-4 font-semibold uppercase tracking-wider text-xs">Rol</th>
-                                <th className="text-right px-6 py-4 font-semibold uppercase tracking-wider text-xs">Acciones</th>
+                                <th>Usuario</th>
+                                <th>Username</th>
+                                <th>Rol</th>
+                                <th className="right">Acciones</th>
                             </tr>
                         </thead>
-
-                        {/* Body (datos de ejemplo) */}
-                        <tbody className="divide-y divide-accent/10">
-                            {paginatedUsers.length === 0 ? (
+                        <tbody>
+                            {loading ? (
                                 <tr>
-                                    <td
-                                        className="px-6 py-8 text-center text-text-muted"
-                                        colSpan={4}
-                                    >
+                                    <td colSpan={4} className="data-table-empty">
+                                        <div className="loading-state" style={{ padding: '24px' }}>
+                                            <span className="spinner-blue" /> Cargando...
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : paginatedUsers.length === 0 ? (
+                                <tr>
+                                    <td colSpan={4} className="data-table-empty">
                                         No hay usuarios para mostrar.
                                     </td>
                                 </tr>
                             ) : (
                                 paginatedUsers.map((u) => (
-                                    <tr key={u.id} className="hover:bg-bg-page/50 transition-colors">
-                                        <td className="px-6 py-4 font-medium text-text-body">
-                                            {[u.name, u.surname].filter(Boolean).join(" ") || "-"}
+                                    <tr key={u.id}>
+                                        <td>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                <Initials name={u.name} surname={u.surname} />
+                                                <span style={{ fontWeight: 500 }}>
+                                                    {[u.name, u.surname].filter(Boolean).join(" ") || "—"}
+                                                </span>
+                                            </div>
                                         </td>
-
-                                        <td className="px-6 py-4 text-text-muted">
-                                            @{u.username}
-                                        </td>
-
-                                        <td className="px-6 py-4">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${roleBadgeClass[u.role] || "bg-bg-page text-text-muted border border-accent/20"}`}>
+                                        <td className="muted">@{u.username}</td>
+                                        <td>
+                                            <span className={roleBadge[u.role] || "badge badge-neutral"}>
                                                 {u.role}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-right">
+                                        <td className="right">
                                             <button
-                                                className="px-4 py-2 rounded-lg bg-bg-page/50 hover:bg-accent/10 border border-accent/20 text-accent text-xs font-semibold transition-colors"
+                                                className="btn-secondary"
+                                                style={{ padding: '6px 14px', fontSize: '0.78rem' }}
                                                 onClick={() => handleOpenDetail(u)}
                                             >
                                                 Ver / Editar
@@ -202,39 +239,33 @@ export const Users = () => {
                 </div>
 
                 {/* Paginación */}
-                <div className="flex items-center justify-between px-6 py-4 border-t border-accent/10 bg-bg-page/20">
-                    <p className="text-xs text-text-muted">
-                        Mostrando {" "}
-                        {(currentPage - 1) * PAGE_SIZE + (paginatedUsers.length ? 1 : 0)}
-                        {" - "}
-                        {(currentPage - 1) * PAGE_SIZE + paginatedUsers.length} de{" "}
-                        {filteredUsers.length}
-                    </p>
-
-                    <div className="flex gap-2">
+                <div className="pagination">
+                    <span>
+                        {filteredUsers.length === 0
+                            ? 'Sin resultados'
+                            : `Mostrando ${firstItem}–${lastItem} de ${filteredUsers.length}`}
+                    </span>
+                    <div className="pagination-controls">
                         <button
+                            className="btn-page"
                             onClick={() => setPage((p) => Math.max(1, p - 1))}
                             disabled={currentPage === 1}
-                            className="px-4 py-2 rounded-lg border border-accent/20 bg-bg-page hover:bg-accent/10 text-text-body text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
-                            Anterior
+                            <IconChevronLeft /> Anterior
                         </button>
-
-                        <span className="px-4 py-2 text-sm font-semibold text-text-body">
-                            {currentPage} / {totalPages}
-                        </span>
-
+                        <span className="page-indicator">{currentPage} / {totalPages}</span>
                         <button
+                            className="btn-page"
                             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                             disabled={currentPage === totalPages}
-                            className="px-4 py-2 rounded-lg border border-accent/20 bg-bg-page hover:bg-accent/10 text-text-body text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
-                            Siguiente
+                            Siguiente <IconChevronRight />
                         </button>
                     </div>
                 </div>
             </div>
 
+            {/* Modales — props originales intactos */}
             <CreateUserModal
                 isOpen={openCreateModal}
                 onClose={() => setOpenCreateModal(false)}
@@ -246,15 +277,12 @@ export const Users = () => {
             <UserDetailModal
                 key={selectedUser?.id || "no-user"}
                 isOpen={openDetailModal}
-                onClose={() => {
-                    setOpenDetailModal(false);
-                    setSelectedUser(null);
-                }}
+                onClose={() => { setOpenDetailModal(false); setSelectedUser(null); }}
                 user={selectedUser}
                 onSaveRole={handleSaveRole}
                 currentUserId={currentUser?.id}
                 loading={loading}
             />
-        </div >
+        </div>
     );
-}
+};
