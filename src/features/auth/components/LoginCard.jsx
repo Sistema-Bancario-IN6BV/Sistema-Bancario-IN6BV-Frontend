@@ -83,7 +83,6 @@ const LoginCard = ({ onGoRegister }) => {
                         <label className="field-label" htmlFor="password-input">
                             <IconLock /> Contraseña
                         </label>
-                        {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
                         <button type="button" className="frg-link" tabIndex={-1}>
                             ¿Olvidaste tu contraseña?
                         </button>

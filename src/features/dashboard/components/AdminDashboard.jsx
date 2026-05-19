@@ -169,8 +169,8 @@ export const AdminDashboard = () => {
                 {dailySeries.map((item) => {
                   const height = Math.max((item.value / peakValue) * 100, item.value > 0 ? 10 : 4);
                   return (
-                    <div key={item.label} className="flex flex-1 flex-col items-center justify-end gap-3">
-                      <div className="flex h-full w-full items-end justify-center">
+                    <div key={item.label} className="flex h-full flex-1 flex-col items-center justify-end gap-3">
+                      <div className="flex w-full flex-1 items-end justify-center">
                         <div
                           className="w-full max-w-[3.5rem] rounded-t-2xl bg-gradient-to-t from-blue-600 to-cyan-400 shadow-[0_12px_24px_rgba(15,123,223,0.25)] transition-all duration-300 hover:from-blue-500 hover:to-cyan-300"
                           style={{ height: `${height}%` }}

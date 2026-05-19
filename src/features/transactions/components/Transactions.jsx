@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { getTransactions } from '../../../shared/api/admin';
+import { getTransactions, revertTransaction } from '../../../shared/api/admin';
 import { showSuccess, showError } from '../../../shared/utils/toast';
 import { Spinner } from "../../../shared/components/layouts/Spinner.jsx";
+import { normalizeRole } from '../../../shared/utils/authRole';
+import { useAuthStore } from '../../auth/store/authStore';
 import {
   ArrowPathIcon,
   ArrowTrendingUpIcon,
@@ -61,36 +63,26 @@ const IconCard       = () => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></svg>
 );
 
-const getTxIcon = (type) => {
-    const map = {
-        deposit:    { cls: 'deposit',    Icon: IconArrowDown  },
-        withdrawal: { cls: 'withdrawal', Icon: IconArrowUp    },
-        transfer:   { cls: 'transfer',   Icon: IconArrowRight },
-        payment:    { cls: 'payment',    Icon: IconCard       },
-    };
-    const entry = map[type] || { cls: 'transfer', Icon: IconArrowRight };
-    return (
-        <span className={`tx-icon ${entry.cls}`}>
-            <entry.Icon />
-        </span>
-    );
-};
-
-const statusBadge = (status) => {
-    if (status === 'completed' || status === 'approved')
-        return <span className="badge badge-success">{status}</span>;
-    if (status === 'pending')
-        return <span className="badge badge-warning">{status}</span>;
-    if (status === 'rejected' || status === 'failed')
-        return <span className="badge badge-danger">{status}</span>;
-    return <span className="badge badge-neutral">{status}</span>;
-};
-
 export const Transactions = () => {
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading]           = useState(true);
+    const [revertingId, setRevertingId] = useState(null);
+    const role = normalizeRole(useAuthStore((state) => state.user?.role));
+    const isAdmin = role === 'ADMIN_ROLE';
 
     useEffect(() => { loadTransactions(); }, []);
+
+    const normalizeType = (type) => String(type || '').toLowerCase();
+
+    const canRevertTransaction = (tx) => {
+        if (!isAdmin) return false;
+        const type = normalizeType(tx.type);
+        if (!['deposit', 'transfer'].includes(type)) return false;
+        if (tx.reverted) return false;
+        const createdAt = tx.createdAt || tx.date;
+        if (!createdAt) return false;
+        return (Date.now() - new Date(createdAt).getTime()) <= 60_000;
+    };
 
     const loadTransactions = async () => {
         try {
@@ -109,7 +101,7 @@ export const Transactions = () => {
     const stats = useMemo(() => {
         const totalVolume = transactions.reduce((sum, tx) => sum + Math.abs(tx.amount || 0), 0);
         const netFlow = transactions.reduce((sum, tx) => {
-            return (tx.type === 'deposit') ? sum + tx.amount : sum - tx.amount;
+            return (normalizeType(tx.type) === 'deposit') ? sum + tx.amount : sum - tx.amount;
         }, 0);
         const pendingCount = transactions.filter(tx => tx.status === 'pending').length;
         const totalCount = transactions.length;
@@ -121,6 +113,23 @@ export const Transactions = () => {
             { label: "Total Movimientos", value: totalCount, icon: CreditCardIcon, tone: "from-indigo-500 to-blue-800" },
         ];
     }, [transactions]);
+
+    const handleRevert = async (transactionId) => {
+        try {
+            setRevertingId(transactionId);
+            const res = await revertTransaction(transactionId);
+            if (res?.data?.success) {
+                showSuccess('Transacción revertida correctamente');
+                await loadTransactions();
+            } else {
+                showError(res?.data?.message || 'No se pudo revertir la transacción');
+            }
+        } catch (error) {
+            showError(error?.response?.data?.message || error.message || 'No se pudo revertir la transacción');
+        } finally {
+            setRevertingId(null);
+        }
+    };
 
     return (
         <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(46,111,212,0.10),_transparent_28%),linear-gradient(180deg,_#f4f8fc_0%,_#edf3f9_100%)] p-4 sm:p-6 lg:p-8">
@@ -227,9 +236,20 @@ export const Transactions = () => {
                                                 {tx.reference || '—'}
                                             </td>
                                             <td className="px-4 py-4 text-right">
-                                                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadgeClass(tx.status)}`}>
-                                                    {tx.status}
-                                                </span>
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadgeClass(tx.status)}`}>
+                                                        {tx.status}
+                                                    </span>
+                                                    {canRevertTransaction(tx) && (
+                                                        <button
+                                                            className="rounded-md border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+                                                            onClick={() => handleRevert(tx.id)}
+                                                            disabled={revertingId === tx.id}
+                                                        >
+                                                            {revertingId === tx.id ? 'Revirtiendo...' : 'Revertir'}
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}

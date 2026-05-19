@@ -63,6 +63,14 @@ export const createTransaction = async (payload) => {
     return axiosAdmin.post('/transactions/create', payload);
 };
 
+export const revertTransaction = async (transactionId) => {
+    return axiosAdmin.put(`/transactions/revert/${transactionId}`);
+};
+
+export const getAccountsWithMostMovements = async (sort = 'desc') => {
+    return axiosAdmin.get('/transactions/accounts-with-most-movements', { params: { sort } });
+};
+
 // PRODUCTOS
 export const getProducts = async () => {
     return axiosAdmin.get('/products');

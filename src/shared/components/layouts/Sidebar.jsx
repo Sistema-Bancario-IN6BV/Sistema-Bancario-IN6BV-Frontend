@@ -12,6 +12,7 @@ import {
 import { StarIcon } from "@heroicons/react/24/solid";
 import { useEffect, useState } from 'react';
 import { getFavorites } from '../../api/admin';
+import { normalizeRole } from "../../utils/authRole";
 
 const adminMenuItems = [
     { label: "Dashboard", to: "/admin", icon: HomeIcon },
@@ -19,6 +20,7 @@ const adminMenuItems = [
     { label: "Transacciones", to: "/admin/transactions", icon: TableCellsIcon },
     { label: "Usuarios", to: "/admin/users", icon: UsersIcon },
     { label: "Productos", to: "/admin/products", icon: ShoppingBagIcon },
+    { label: "Servicios", to: "/admin/services", icon: ShoppingBagIcon },
     // Reportes eliminado — no disponible
 ];
 
@@ -27,6 +29,7 @@ const customerMenuItems = [
     { label: "Cuentas", to: "/client/accounts", icon: ChartBarIcon },
     { label: "Transacciones", to: "/client/transactions", icon: TableCellsIcon },
     { label: "Productos", to: "/client/products", icon: ShoppingBagIcon },
+    { label: "Servicios", to: "/client/products", icon: ShoppingBagIcon },
 ];
 
 /* ── Menú por rol (idéntico al original) ── */
@@ -41,7 +44,7 @@ const menuItemsByRole = {
 export const Sidebar = () => {
     const location  = useLocation();
     const user      = useAuthStore((state) => state.user);
-    const role      = user?.role || "USER_ROLE";
+    const role      = normalizeRole(user?.role) || "USER_ROLE";
     const menuItems = menuItemsByRole[role] || menuItemsByRole.USER_ROLE;
     const [favorites, setFavorites] = useState([]);
 
@@ -49,12 +52,13 @@ export const Sidebar = () => {
         let mounted = true;
         (async () => {
             try {
-                const res = await getFavorites();
-                if (!mounted) return;
-                setFavorites(res?.data || []);
-            } catch (err) {
-                // ignore
-            }
+                    const res = await getFavorites();
+                    if (!mounted) return;
+                    setFavorites(res?.data || []);
+                } catch (err) {
+                     
+                    console.warn('getFavorites failed:', err);
+                }
         })();
         return () => { mounted = false; };
     }, []);

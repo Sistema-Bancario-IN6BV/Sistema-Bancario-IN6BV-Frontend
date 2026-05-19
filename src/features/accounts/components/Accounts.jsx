@@ -10,6 +10,7 @@ import { useUserManagmentStore } from "../../users/store/useUserManagmentStore";
 import { AccountModal } from "./AccountModal.jsx";
 import { useUIStore } from "../../../shared/components/ui/store/uiStore";
 import { AccountConfirmDeleteModal } from "./AccountConfirmDeleteModal.jsx";
+import { DepositTransactionModal } from "./DepositTransactionModal.jsx";
 import "../../../styles/credit-card.css";
 import { CreditCardItem } from "./CreditCardItem.jsx";
 import {
@@ -20,8 +21,11 @@ import {
   BanknotesIcon,
   ShieldCheckIcon,
   PlusIcon,
+  ArrowDownCircleIcon,
 } from "@heroicons/react/24/outline";
 import ConversionModal from '../../../shared/components/ui/ConversionModal';
+import { normalizeRole } from "../../../shared/utils/authRole";
+import { createTransaction, getAccountsWithMostMovements } from "../../../shared/api/admin";
 
 export const Accounts = () => {
   // SE REMOVIERON LAS DECLARACIONES LOCALES DUPLICADAS DE ACCOUNTS Y LOADING
@@ -38,23 +42,61 @@ export const Accounts = () => {
 
   const { user } = useAuthStore();
   const { openConfirm } = useUIStore();
-  const isAdmin = user?.role === "ADMIN_ROLE" || user?.role === "PLATFORM_ADMIN";
-  const isClient = user?.role === "USER_ROLE" || user?.role === "CUSTOMER";
+  const normalizedRole = normalizeRole(user?.role);
+  const isAdmin = normalizedRole === "ADMIN_ROLE";
+  const isClient = normalizedRole === "USER_ROLE";
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [conversionOpen, setConversionOpen] = useState(false);
   const [conversionAccount, setConversionAccount] = useState(null);
+  const [depositOpen, setDepositOpen] = useState(false);
+  const [depositDestination, setDepositDestination] = useState(null);
+  const [depositLoading, setDepositLoading] = useState(false);
+  const [orderMode, setOrderMode] = useState('activity-desc');
+  const [movementRanking, setMovementRanking] = useState([]);
+  const [rankingLoading, setRankingLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(6);
 
   useEffect(() => {
-    getAccounts().catch(() => {});
-    fetchUsers().catch(() => {});
+    getAccounts().catch((err) => {
+       
+      console.warn('getAccounts failed:', err);
+    });
+    fetchUsers().catch((err) => {
+       
+      console.warn('fetchUsers failed:', err);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const loadRanking = async () => {
+      if (!isAdmin || !orderMode.startsWith('activity')) {
+        setMovementRanking([]);
+        return;
+      }
+
+      try {
+        setRankingLoading(true);
+        const sort = orderMode === 'activity-asc' ? 'asc' : 'desc';
+        const res = await getAccountsWithMostMovements(sort);
+        const data = res?.data?.data ?? res?.data ?? [];
+        setMovementRanking(Array.isArray(data) ? data : []);
+      } catch (error) {
+         
+        console.warn('getAccountsWithMostMovements failed:', error);
+        setMovementRanking([]);
+      } finally {
+        setRankingLoading(false);
+      }
+    };
+
+    loadRanking().catch(() => {});
+  }, [isAdmin, orderMode]);
 
   const canEditSelected = useMemo(() => {
     if (!selectedAccount) return false;
@@ -134,9 +176,41 @@ export const Accounts = () => {
   }, [currentPage, totalPages]);
 
   const paginatedAccounts = useMemo(() => {
+    const movementCountById = new Map(
+      movementRanking.map((item) => [
+        String(item?.account?._id || item?.account?.id || ''),
+        Number(item?.movementCount || 0),
+      ])
+    );
+
+    const sortedAccounts = [...filteredAccounts].sort((left, right) => {
+      if (orderMode === 'number-asc') {
+        return String(left.accountNumber || '').localeCompare(String(right.accountNumber || ''));
+      }
+
+      if (orderMode === 'number-desc') {
+        return String(right.accountNumber || '').localeCompare(String(left.accountNumber || ''));
+      }
+
+      if (orderMode === 'balance-asc') {
+        return Number(left.balance || 0) - Number(right.balance || 0);
+      }
+
+      if (orderMode === 'balance-desc') {
+        return Number(right.balance || 0) - Number(left.balance || 0);
+      }
+
+      const leftCount = movementCountById.get(String(left._id || left.id)) || 0;
+      const rightCount = movementCountById.get(String(right._id || right.id)) || 0;
+      return orderMode === 'activity-asc' ? leftCount - rightCount : rightCount - leftCount;
+    });
+
     const start = (currentPage - 1) * pageSize;
-    return filteredAccounts.slice(start, start + pageSize);
-  }, [filteredAccounts, currentPage, pageSize]);
+    return sortedAccounts.slice(start, start + pageSize).map((account) => ({
+      ...account,
+      movementCount: movementRanking.find((item) => String(item?.account?._id || item?.account?.id || '') === String(account._id || account.id))?.movementCount || 0,
+    }));
+  }, [filteredAccounts, currentPage, pageSize, movementRanking, orderMode]);
 
   const handleCreateSubmit = async ({ ok, payload, error }) => {
     if (!ok) {
@@ -201,6 +275,11 @@ export const Accounts = () => {
     setEditOpen(true);
   };
 
+  const handleOpenDeposit = (account) => {
+    setDepositDestination(account);
+    setDepositOpen(true);
+  };
+
   const handleActivate = (account) => {
     const accountId = account._id ?? account.id;
     if (!accountId) {
@@ -251,6 +330,31 @@ export const Accounts = () => {
         }
       },
     }); // CORREGIDO: Se cerró correctamente el objeto de configuración y la llamada
+  };
+
+  const handleDepositSubmit = async ({ ok, payload, error }) => {
+    if (!ok) {
+      showError(error || "No se pudo registrar el depósito");
+      return;
+    }
+
+    try {
+      setDepositLoading(true);
+      const res = await createTransaction(payload);
+
+      if (res?.data?.success) {
+        showSuccess("Depósito registrado correctamente");
+        await getAccounts();
+        setDepositOpen(false);
+        setDepositDestination(null);
+      } else {
+        showError(res?.data?.message || "No se pudo registrar el depósito");
+      }
+    } catch (err) {
+      showError(err?.response?.data?.message || err.message || "No se pudo registrar el depósito");
+    } finally {
+      setDepositLoading(false);
+    }
   };
 
   return (
@@ -309,8 +413,8 @@ export const Accounts = () => {
         </section>
 
         <section className="rounded-md border border-white/70 bg-white/88 p-4 shadow-[0_18px_50px_rgba(10,37,64,0.08)] backdrop-blur sm:p-6">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
+          <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
               <input
                 value={searchTerm}
                 onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
@@ -327,8 +431,24 @@ export const Accounts = () => {
                 <option value={9}>9 por página</option>
                 <option value={12}>12 por página</option>
               </select>
+              <select
+                value={orderMode}
+                onChange={(e) => { setOrderMode(e.target.value); setCurrentPage(1); }}
+                className="rounded-md border px-2 py-2 text-sm"
+                title="Ordenar cuentas"
+              >
+                <option value="activity-desc">Actividad: mayor a menor</option>
+                <option value="activity-asc">Actividad: menor a mayor</option>
+                <option value="number-asc">Número de cuenta: asc</option>
+                <option value="number-desc">Número de cuenta: desc</option>
+                <option value="balance-desc">Saldo: mayor a menor</option>
+                <option value="balance-asc">Saldo: menor a mayor</option>
+              </select>
             </div>
-            <div className="text-sm text-slate-500">Resultados: {filteredAccounts.length}</div>
+            <div className="text-sm text-slate-500">
+              Resultados: {filteredAccounts.length}
+              {orderMode.startsWith('activity') && rankingLoading && ' · cargando actividad...'}
+            </div>
           </div>
 
           {loading ? (
@@ -363,6 +483,12 @@ export const Accounts = () => {
                       </div>
                     </div>
 
+                    {orderMode.startsWith('activity') && (
+                      <div className="px-5 pb-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                        Movimientos: {account.movementCount || 0}
+                      </div>
+                    )}
+
                     <div className="border-t border-slate-200/80 px-5 py-5">
                       <div className="flex flex-wrap gap-3">
                         {(isAdmin || (isClient && account.externalUserId === user?.id)) && (
@@ -372,6 +498,16 @@ export const Accounts = () => {
                           >
                             <BanknotesIcon className="w-5 h-5" />
                             Cambio divisas
+                          </button>
+                        )}
+
+                        {isAdmin && (
+                          <button
+                            className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"
+                            onClick={(e) => { e.stopPropagation(); handleOpenDeposit(account); }}
+                          >
+                            <ArrowDownCircleIcon className="w-5 h-5" />
+                            Depósito
                           </button>
                         )}
 
@@ -414,7 +550,6 @@ export const Accounts = () => {
                         )}
                       </div>
 
-                      <ConversionModal accountId={conversionAccount} isOpen={conversionOpen} onClose={() => setConversionOpen(false)} />
                     </div>
                   </div>
                 );
@@ -469,6 +604,28 @@ export const Accounts = () => {
       />
 
       <AccountConfirmDeleteModal />
+
+      <ConversionModal
+        accountId={conversionAccount}
+        isOpen={conversionOpen}
+        onClose={() => {
+          setConversionOpen(false);
+          setConversionAccount(null);
+        }}
+      />
+
+      <DepositTransactionModal
+        isOpen={depositOpen}
+        onClose={() => {
+          setDepositOpen(false);
+          setDepositDestination(null);
+        }}
+        onSubmit={handleDepositSubmit}
+        loading={depositLoading}
+        accounts={accounts}
+        users={users}
+        destinationAccount={depositDestination ? (depositDestination._id || depositDestination.id || depositDestination.accountNumber || '') : ''}
+      />
     </div>
   );
 };
