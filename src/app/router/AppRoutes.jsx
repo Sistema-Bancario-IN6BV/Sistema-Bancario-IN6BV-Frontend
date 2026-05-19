@@ -8,6 +8,7 @@ import { Accounts } from "../../features/accounts/components/Accounts.jsx";
 import { Transactions } from "../../features/transactions/components/Transactions.jsx";
 import { Users } from "../../features/users/components/Users.jsx";
 import { Products } from "../../features/products/components/Products.jsx";
+import { Services } from "../../features/services/components/Services.jsx";
 // Reports feature removed (no available reports)
 import { ClientDashboard } from "../../features/client/components/ClientDashboard.jsx";
 import { AdminDashboard } from "../../features/dashboard/components/AdminDashboard.jsx";
@@ -37,6 +38,7 @@ export const AppRoutes = () => {
                 <Route path="users" element={<Users />} />
                 {/* Reportes eliminado */}
                 <Route path="products" element={<Products />} />
+                <Route path="services" element={<Services />} />
                 <Route path="accounts" element={<Accounts />} />
                 <Route path="transactions" element={<Transactions />} />
             </Route>
@@ -56,6 +58,7 @@ export const AppRoutes = () => {
                 <Route path="accounts" element={<Accounts />} />
                 <Route path="transactions" element={<Transactions />} />
                 <Route path="products" element={<Products />} />
+                <Route path="services" element={<Products />} />
             </Route>
 
             {/* Perfil: mostrar dentro del layout de Dashboard para mantener apariencia */}

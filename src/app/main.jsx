@@ -7,10 +7,8 @@ import { Toaster } from 'react-hot-toast'
 import '../styles/index.css'
 
 // Forzar inicio en pantalla de login: eliminar estado de sesión persistente
-try {
+if (typeof localStorage !== 'undefined') {
   localStorage.removeItem('auth-storage');
-} catch (e) {
-  // Silencioso en entornos donde localStorage no esté disponible
 }
 
 createRoot(document.getElementById('root')).render(
