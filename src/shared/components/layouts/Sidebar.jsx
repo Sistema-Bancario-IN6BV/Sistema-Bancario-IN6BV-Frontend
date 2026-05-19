@@ -29,7 +29,7 @@ const customerMenuItems = [
   { label: "Cuentas",        to: "/client/accounts",     icon: ChartBarIcon },
   { label: "Transacciones",  to: "/client/transactions", icon: TableCellsIcon },
   { label: "Productos",      to: "/client/products",     icon: ShoppingBagIcon },
-  { label: "Servicios",      to: "/client/products",     icon: ShoppingBagIcon },
+  { label: "Servicios",      to: "/client/services",     icon: ShoppingBagIcon },
 ];
 
 const menuItemsByRole = {
