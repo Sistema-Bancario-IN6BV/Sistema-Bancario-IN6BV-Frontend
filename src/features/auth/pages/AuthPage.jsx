@@ -157,8 +157,28 @@ export const AuthPage = () => {
 
             {/* ── Fondo: mitad oscura + mitad clara + canvas ── */}
             <div className="auth-bg">
-                <div className="auth-bg-left"  />
-                <div className="auth-bg-right" />
+                <div className="auth-bg-left">
+                    <div className="ring">
+                        <i style={{ "--clr": "#00ff0a" }}></i>
+                        <i style={{ "--clr": "#ff0057" }}></i>
+                        <i style={{ "--clr": "#fffd44" }}></i>
+                        <div className="ring-content">
+                            <h2 style={{ color: '#fff' }}>¡Bienvenido!</h2>
+                            <p style={{ color: '#ddd' }}>Accede a tu cuenta para gestionar tus finanzas</p>
+                        </div>
+                    </div>
+                </div>
+                <div className="auth-bg-right">
+                    <div className="ring">
+                        <i style={{ "--clr": "#00ff0a" }}></i>
+                        <i style={{ "--clr": "#ff0057" }}></i>
+                        <i style={{ "--clr": "#fffd44" }}></i>
+                        <div className="ring-content">
+                            <h2 style={{ color: '#2b2b2b' }}>Crea tu cuenta</h2>
+                            <p style={{ color: '#555' }}>Únete al Sistema Bancario hoy</p>
+                        </div>
+                    </div>
+                </div>
                 <canvas
                     ref={canvasRef}
                     className="auth-canvas"
