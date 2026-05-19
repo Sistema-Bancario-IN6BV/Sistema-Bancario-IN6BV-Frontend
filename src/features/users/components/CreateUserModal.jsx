@@ -1,4 +1,4 @@
-// CreateUserModal.jsx — REDISEÑO VISUAL · Lógica intacta
+// CreateUserModal.jsx 
 import { useForm } from "react-hook-form";
 import { Spinner } from "../../../shared/components/layouts/Spinner";
 

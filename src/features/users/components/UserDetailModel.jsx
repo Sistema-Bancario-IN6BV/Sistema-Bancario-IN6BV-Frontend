@@ -1,4 +1,4 @@
-// UserDetailModal.jsx — REDISEÑO VISUAL · Lógica extendida para edición y borrado
+// UserDetailModal.jsx 
 import { useEffect, useState } from "react";
 import { Spinner } from "../../../shared/components/layouts/Spinner";
 import defaultAvatarImg from "../../../assets/img/hero.png";

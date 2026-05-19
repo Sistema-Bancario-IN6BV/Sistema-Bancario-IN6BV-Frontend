@@ -116,9 +116,6 @@ const StatCard = ({ label, value, icon: Icon }) => {
   );
 };
 
-/* ══════════════════════════════════════════════
-   AdminDashboard — lógica 100% original
-   ══════════════════════════════════════════════ */
 export const AdminDashboard = () => {
   const { accounts = [], loading: accountsLoading, getAccounts } = useAccountStore();
   const { users = [], fetchUsers, loading: usersLoading } = useUserManagmentStore();

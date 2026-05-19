@@ -1,5 +1,4 @@
-// DashboardContainer.jsx — REDISEÑO VISUAL ÚNICAMENTE
-// Lógica original intacta: children pass-through sin cambios
+// DashboardContainer.jsx
 import React from 'react'
 import { Navbar } from './Navbar'
 import { Sidebar } from './Sidebar'
