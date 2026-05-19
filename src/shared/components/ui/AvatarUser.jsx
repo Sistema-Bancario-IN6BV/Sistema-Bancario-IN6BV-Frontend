@@ -2,13 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuthStore } from "../../../features/auth/store/authStore";
 import defaultAvatarImg from "../../../assets/img/hero.png";
+import { normalizeRole } from "../../../shared/utils/authRole";
 
 export const AvatarUser = () => {
     const { user, logout } = useAuthStore();
     const [open, setOpen] = useState(false);
     const dropdownRef = useRef(null);
     const navigate = useNavigate();
-
     const toggleMenu = () => setOpen((prev) => !prev);
 
     useEffect(() => {
@@ -26,22 +26,13 @@ export const AvatarUser = () => {
         navigate("/", { replace: true });
     };
 
-    const getInitials = (name) => {
-        if (!name) return "U";
-        const parts = name.split(" ");
-        if (parts.length >= 2) {
-            return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-        }
-        return name.slice(0, 2).toUpperCase();
-    };
-
     const avatarSrc =
         user?.profilePicture && user.profilePicture.trim() !== "" && !user.profilePicture.includes("default-avatar_ewzxwx.png")
             ? user.profilePicture
             : defaultAvatarImg;
 
-    const roleDisplay = user?.role
-        ? user.role.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase())
+    const roleDisplay = normalizeRole(user?.role)
+        ? normalizeRole(user?.role).replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase())
         : "Cliente";
 
     return (
@@ -73,59 +64,19 @@ export const AvatarUser = () => {
                         className="fixed inset-0 z-10"
                         onClick={() => setOpen(false)}
                     />
-                    <div className="absolute right-0 mt-2 w-56 bg-bg-card border border-accent/20 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.6)] animate-fadeIn z-20 overflow-hidden">
-                        <div className="px-5 py-4 border-b border-accent/15 bg-bg-page/40">
-                            <p className="font-semibold text-text-body text-[15px] truncate">
-                                {user?.name || user?.username}
-                            </p>
-                            <p className="text-xs text-text-muted truncate mt-0.5 tracking-wide">
-                                {user?.email}
-                            </p>
+                    <div style={{ backgroundColor: 'var(--color-bg-sidebar)' }} className="absolute right-0 mt-2 w-56 border border-white/10 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.6)] animate-fadeIn z-20 overflow-hidden text-white">
+                        <div className="px-5 py-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                            <p className="font-semibold text-white text-[15px] truncate">{user?.name || user?.username}</p>
+                            <p className="text-xs text-white/80 truncate mt-0.5 tracking-wide">{user?.email}</p>
                         </div>
-                        <ul className="p-2 text-sm text-text-body font-medium tracking-wide">
+                        <ul className="p-2 text-sm text-white font-medium tracking-wide">
                             <li>
-                                <Link
-                                    to="/perfil"
-                                    className="flex items-center gap-2 w-full p-2.5 rounded-lg hover:bg-accent/10 hover:text-accent transition-colors mb-1"
-                                >
-                                    Mi Perfil
-                                </Link>
+                                <Link to="/perfil" className="flex items-center gap-2 w-full p-2.5 rounded-lg hover:bg-white/10 transition-colors mb-1">Mi Perfil</Link>
                             </li>
+                            <div className="border-t border-white/10 my-1" />
+
                             <li>
-                                <Link
-                                    to="/notificaciones"
-                                    className="flex items-center gap-2 w-full p-2.5 rounded-lg hover:bg-accent/10 hover:text-accent transition-colors mb-1"
-                                >
-                                    Notificaciones
-                                </Link>
-                            </li>
-                            <div className="border-t border-accent/10 my-1" />
-                            <li>
-                                <Link
-                                    to="/panel"
-                                    className="flex items-center gap-2 w-full p-2.5 rounded-lg hover:bg-accent/10 hover:text-accent transition-colors mb-1"
-                                >
-                                    Panel
-                                </Link>
-                            </li>
-                            {user?.role === "PLATFORM_ADMIN" && (
-                                <li>
-                                    <Link
-                                        to="/panel/users"
-                                        className="block w-full p-2.5 rounded-lg hover:bg-accent/10 hover:text-accent transition-colors mb-2"
-                                    >
-                                        Usuarios
-                                    </Link>
-                                </li>
-                            )}
-                            <div className="border-t border-accent/10 my-1" />
-                            <li>
-                                <button
-                                    onClick={handleLogout}
-                                    className="block w-full text-left p-2.5 rounded-lg hover:bg-error/10 text-error transition-colors mt-1 font-semibold"
-                                >
-                                    Cerrar sesión
-                                </button>
+                                <button onClick={handleLogout} className="block w-full text-left p-2.5 rounded-lg hover:bg-white/10 transition-colors mt-1 font-semibold">Cerrar sesión</button>
                             </li>
                         </ul>
                     </div>

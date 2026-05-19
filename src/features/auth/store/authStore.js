@@ -6,6 +6,7 @@ import {
     forgotPassword as forgotPasswordRequest,
     resetPassword as resetPasswordRequest
 } from "../../../shared/api/auth";
+import { isTokenExpired, normalizeAuthUser } from "../../../shared/utils/authRole";
 
 export const useAuthStore = create(
     persist(
@@ -25,11 +26,26 @@ export const useAuthStore = create(
             clearSuccess: () => set({ successMessage: null }),
 
             checkAuth: () => {
-                const token = get().token;
+                const { token, expiresAt, user } = get();
+
+                if (!token || isTokenExpired(expiresAt)) {
+                    set({
+                        user: null,
+                        userId: null,
+                        token: null,
+                        refreshToken: null,
+                        expiresAt: null,
+                        isLoadingAuth: false,
+                        isAuthenticated: false
+                    });
+
+                    return;
+                }
 
                 set({
                     isLoadingAuth: false,
-                    isAuthenticated: Boolean(token)
+                    isAuthenticated: Boolean(token),
+                    user: normalizeAuthUser(user)
                 })
             },
 
@@ -66,16 +82,18 @@ export const useAuthStore = create(
 
                     const { data } = await loginRequest({ emailOrUsername, password });
 
+                    const user = normalizeAuthUser(data.userDetails || null);
+
                     set({
-                        user: data.userDetails,
-                        userId: data.userDetails?.id,
+                        user,
+                        userId: user?.id,
                         token: data.token,
                         expiresAt: data.expiresAt || null,
                         loading: false,
                         isAuthenticated: true
                     });
 
-                    return { success: true };
+                    return { success: true, user, token: data.token };
                 } catch (err) {
                     // Garantiza que el catch dispare y que el usuario vea feedback.
                     console.error("Login error:", err);

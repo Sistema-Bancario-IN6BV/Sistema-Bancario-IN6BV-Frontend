@@ -1,15 +1,19 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthPage } from "../../features/auth/pages/AuthPage.jsx";
 import { ProtectedRoute } from "./ProtectedRoute.jsx";
-import { MainPage } from "../Layouts/MainPage.jsx";
+import { RoleGuard } from "./RoleGuard.jsx"; // Importamos el RoleGuard
 import { UnauthorizedPage } from "../../features/auth/pages/UnauthorizedPage.jsx";
 import { VerifyEmailPage } from "../../features/auth/pages/VerifyEmailPage.jsx";
 import { Accounts } from "../../features/accounts/components/Accounts.jsx";
 import { Transactions } from "../../features/transactions/components/Transactions.jsx";
-
-const Users = () => <div className="p-6"><h2 className="text-2xl font-bold">Usuarios</h2></div>;
-const Products = () => <div className="p-6"><h2 className="text-2xl font-bold">Productos</h2></div>;
-const Reports = () => <div className="p-6"><h2 className="text-2xl font-bold">Reportes</h2></div>;
+import { Users } from "../../features/users/components/Users.jsx";
+import { Products } from "../../features/products/components/Products.jsx";
+import { Services } from "../../features/services/components/Services.jsx";
+// Reports feature removed (no available reports)
+import { ClientDashboard } from "../../features/client/components/ClientDashboard.jsx";
+import { AdminDashboard } from "../../features/dashboard/components/AdminDashboard.jsx";
+import { DashboardPage } from "../Layouts/DashboardPage.jsx";
+import { ProfilePage } from "../../features/auth/pages/ProfilePage.jsx";
 
 export const AppRoutes = () => {
     return (
@@ -18,26 +22,57 @@ export const AppRoutes = () => {
             <Route path="/" element={<AuthPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
- 
-            {/* RUTAS PROTEGIDAS */}
+
+            {/* PORTAL DE ADMINISTRACIÓN (Protegido para ADMIN_ROLE) */}
             <Route
-                path="/panel"
+                path="/admin"
                 element={
                     <ProtectedRoute>
-                        <MainPage />
+                        <RoleGuard allowedRole={["ADMIN_ROLE"]}>
+                            <DashboardPage />
+                        </RoleGuard>
                     </ProtectedRoute>
                 }
             >
-                <Route index element={<Accounts />} />
+                <Route index element={<AdminDashboard />} />
+                <Route path="users" element={<Users />} />
+                {/* Reportes eliminado */}
+                <Route path="products" element={<Products />} />
+                <Route path="services" element={<Services />} />
                 <Route path="accounts" element={<Accounts />} />
                 <Route path="transactions" element={<Transactions />} />
-                <Route path="users" element={<Users />} />
-                <Route path="products" element={<Products />} />
-                <Route path="reports" element={<Reports />} />
             </Route>
- 
+
+            {/* PORTAL DE CLIENTE (Protegido para USER_ROLE) */}
+            <Route
+                path="/client"
+                element={
+                    <ProtectedRoute>
+                        <RoleGuard allowedRole={["USER_ROLE"]}>
+                            <DashboardPage />
+                        </RoleGuard>
+                    </ProtectedRoute>
+                }
+            >
+                <Route index element={<ClientDashboard />} />
+                <Route path="accounts" element={<Accounts />} />
+                <Route path="transactions" element={<Transactions />} />
+                <Route path="products" element={<Products />} />
+                <Route path="services" element={<Products />} />
+            </Route>
+
+            {/* Perfil: mostrar dentro del layout de Dashboard para mantener apariencia */}
+            <Route
+                path="/perfil"
+                element={
+                    <ProtectedRoute>
+                        <DashboardPage />
+                    </ProtectedRoute>
+                }
+            >
+                <Route index element={<ProfilePage />} />
+            </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
     );
 };
- 

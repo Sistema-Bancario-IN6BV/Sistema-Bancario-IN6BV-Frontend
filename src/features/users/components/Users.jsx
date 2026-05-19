@@ -6,15 +6,24 @@ import { showError, showSuccess } from "../../../shared/utils/toast.js";
 import { CreateUserModal } from "./CreateUserModal.jsx";
 import { useAuthStore } from "../../auth/store/authStore.js";
 import { UserDetailModal } from "./UserDetailModel.jsx";
+import { createUserByAdmin, updateUserByAdmin, deleteUserByAdmin } from "../../../shared/api/auth.js";
+import { normalizeRole } from "../../../shared/utils/authRole.js";
+import {
+  PlusIcon,
+  MagnifyingGlassIcon,
+  UserGroupIcon,
+  ShieldCheckIcon,
+  ClockIcon,
+  UserPlusIcon,
+} from "@heroicons/react/24/outline";
 
 const PAGE_SIZE = 8;
-const ROLE_OPTIONS = ["PLATFORM_ADMIN", "RESTAURANT_ADMIN", "CUSTOMER"];
+const ROLE_OPTIONS = ["ADMIN_ROLE", "USER_ROLE"];
 
 /* — Badge por rol — */
 const roleBadge = {
-    PLATFORM_ADMIN:   "badge badge-primary",
-    RESTAURANT_ADMIN: "badge badge-warning",
-    CUSTOMER:         "badge badge-success",
+    ADMIN_ROLE:   "badge badge-primary",
+    USER_ROLE:    "badge badge-success",
 };
 
 const IconSearch = () => (
@@ -56,7 +65,6 @@ const Initials = ({ name, surname }) => {
 export const Users = () => {
     /* — Store y estado originales intactos — */
     const { users, loading, error, fetchUsers, updateUserRole } = useUserManagmentStore();
-    const registerUser  = useAuthStore((state) => state.register);
     const currentUser   = useAuthStore((state) => state.user);
 
     const [search,           setSearch]           = useState("");
@@ -75,7 +83,7 @@ export const Users = () => {
         return users.filter((u) => {
             const fullName = `${u.name || ""} ${u.surname || ""}`.trim().toLowerCase();
             const username = (u.username || "").toLowerCase();
-            const role     = (u.role || "").toUpperCase();
+            const role     = normalizeRole(u.role) || (u.role || "").toUpperCase();
             const matchesSearch = !norm || fullName.includes(norm) || username.includes(norm);
             const matchesRole   = roleFilter === "ALL" ? true : role === roleFilter.toUpperCase();
             return matchesRole && matchesSearch;
@@ -91,14 +99,15 @@ export const Users = () => {
 
     /* — Handlers originales intactos — */
     const handleCreate = async (formData) => {
-        const res = await registerUser(formData);
-        if (res.success) {
-            showSuccess("Usuario creado. Se envió un correo de verificación.");
+        try {
+            await createUserByAdmin(formData);
+            showSuccess("Usuario creado correctamente");
             await fetchUsers(undefined, { force: true });
             return true;
+        } catch (err) {
+            showError(err?.response?.data?.message || err.message || "No se pudo crear el usuario");
+            return false;
         }
-        showError(res.error || "No se pudo crear el usuario");
-        return false;
     };
 
     const handleSaveRole = async (user, newRole) => {
@@ -109,6 +118,62 @@ export const Users = () => {
             setSelectedUser(null);
         } else {
             showError(res.error || "No se pudo actualizar el rol");
+        }
+    };
+
+    const handleSaveUser = async (user, form) => {
+        const role = normalizeRole(user.role) || "USER_ROLE";
+
+        if (role === "ADMIN_ROLE" && currentUser?.id !== user.id) {
+            showError("No puedes editar otro administrador");
+            return;
+        }
+
+        if (Number(form.monthlyIncome) < 100) {
+            showError("Los ingresos mensuales deben ser al menos Q100");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("name", form.name || "");
+        formData.append("surname", form.surname || "");
+        formData.append("email", form.email || "");
+        formData.append("phone", form.phone || "");
+        formData.append("address", form.address || "");
+        formData.append("jobName", form.jobName || "");
+        formData.append("monthlyIncome", String(form.monthlyIncome ?? ""));
+
+        try {
+            await updateUserByAdmin(user.id, formData);
+            showSuccess("Usuario actualizado correctamente");
+            await fetchUsers(undefined, { force: true });
+            setOpenDetailModal(false);
+            setSelectedUser(null);
+        } catch (err) {
+            showError(err?.response?.data?.message || err.message || "No se pudo actualizar el usuario");
+        }
+    };
+
+    const handleDeleteUser = async (user) => {
+        const role = normalizeRole(user.role) || "USER_ROLE";
+
+        if (role === "ADMIN_ROLE") {
+            showError("No puedes eliminar otro administrador");
+            return;
+        }
+
+        if (!window.confirm(`¿Eliminar al usuario ${[user.name, user.surname].filter(Boolean).join(" ") || user.username}?`)) {
+            return;
+        }
+
+        try {
+            await deleteUserByAdmin(user.id);
+            showSuccess("Usuario eliminado correctamente");
+            await fetchUsers(undefined, { force: true });
+            setOpenDetailModal(false);
+            setSelectedUser(null);
+        } catch (err) {
+            showError(err?.response?.data?.message || err.message || "No se pudo eliminar el usuario");
         }
     };
 
@@ -260,6 +325,8 @@ export const Users = () => {
                 onClose={() => { setOpenDetailModal(false); setSelectedUser(null); }}
                 user={selectedUser}
                 onSaveRole={handleSaveRole}
+                onSaveUser={handleSaveUser}
+                onDeleteUser={handleDeleteUser}
                 currentUserId={currentUser?.id}
                 loading={loading}
             />

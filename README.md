@@ -1,8 +1,8 @@
-# 🏦 Sistema Bancario IN6BV - Frontend
+#  Sistema Bancario IN6BV - Frontend
 
 Sistema de gestión bancaria moderna con React 18, Vite y Tailwind CSS.
 
-## 📋 Características
+##  Características
 
 ✅ **Autenticación segura** con JWT  
 ✅ **Dashboard** con estadísticas  
@@ -12,7 +12,7 @@ Sistema de gestión bancaria moderna con React 18, Vite y Tailwind CSS.
 ✅ **Protección de rutas** automática  
 ✅ **Diseño responsive**
 
-## 🚀 Quick Start
+##  Quick Start
 
 ```bash
 pnpm install
@@ -22,7 +22,7 @@ pnpm run dev
 
 Abre `http://localhost:5173`
 
-## 📦 Scripts
+##  Scripts
 
 ```bash
 pnpm run dev      # Desarrollo
@@ -30,22 +30,22 @@ pnpm run build    # Producción
 pnpm run lint     # Linter
 ```
 
-## 🧪 Testing
+##  Testing
 
 ```powershell
 .\tests\test-integration.ps1
 ```
 
-## 📡 Servicios Requeridos
+##  Servicios Requeridos
 
 - Auth Service (3001)
 - Admin API (3002)
 
-## ⚙️ Configuración
+##  Configuración
 
 Ver [SETUP.md](./SETUP.md) y `.env.example`
 
-## 📄 Licencia
+##  Licencia
 
 ISC
 

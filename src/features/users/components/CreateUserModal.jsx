@@ -29,6 +29,12 @@ export const CreateUserModal = ({ isOpen, onClose, onCreate, loading, error }) =
         formData.append("email",   values.email);
         formData.append("password", values.password);
         formData.append("phone",   values.phone);
+        formData.append("RoleName", values.roleName);
+        // Campos administrativos
+        if (values.dpi) formData.append("dpi", values.dpi);
+        if (values.address) formData.append("address", values.address);
+        if (values.jobName) formData.append("jobName", values.jobName);
+        if (values.monthlyIncome) formData.append("monthlyIncome", values.monthlyIncome);
         if (values.profilePicture?.[0]) {
             formData.append("profilePicture", values.profilePicture[0]);
         }
@@ -123,6 +129,31 @@ export const CreateUserModal = ({ isOpen, onClose, onCreate, loading, error }) =
                             {errors.email && <p className="modal-field-error">{errors.email.message}</p>}
                         </div>
 
+                        {/* DPI + Dirección */}
+                        <div className="modal-grid-2">
+                            <div className="modal-field">
+                                <label className="modal-label">DPI (13 dígitos)</label>
+                                <input
+                                    className="modal-input"
+                                    type="text"
+                                    placeholder="1234567890101"
+                                    {...register("dpi", {
+                                        pattern: { value: /^[0-9]{13}$/, message: "Debe ser un número de 13 dígitos" },
+                                    })}
+                                />
+                                {errors.dpi && <p className="modal-field-error">{errors.dpi.message}</p>}
+                            </div>
+                            <div className="modal-field">
+                                <label className="modal-label">Dirección</label>
+                                <input
+                                    className="modal-input"
+                                    type="text"
+                                    placeholder="Zona 10, Ciudad"
+                                    {...register("address")}
+                                />
+                            </div>
+                        </div>
+
                         {/* Contraseña + Confirmar */}
                         <div className="modal-grid-2">
                             <div className="modal-field">
@@ -165,6 +196,47 @@ export const CreateUserModal = ({ isOpen, onClose, onCreate, loading, error }) =
                                 accept="image/*"
                                 {...register("profilePicture")}
                             />
+                        </div>
+
+                        {/* Trabajo / Ingreso mensual */}
+                        <div className="modal-grid-2">
+                            <div className="modal-field">
+                                <label className="modal-label">Trabajo / Puesto</label>
+                                <input
+                                    className="modal-input"
+                                    type="text"
+                                    placeholder="Desarrollador"
+                                    {...register("jobName")}
+                                />
+                            </div>
+                            <div className="modal-field">
+                                <label className="modal-label">Ingreso mensual (Q)</label>
+                                <input
+                                    className="modal-input"
+                                    type="number"
+                                    placeholder="5000"
+                                    {...register("monthlyIncome", {
+                                        valueAsNumber: true,
+                                        min: { value: 100, message: "El ingreso mensual debe ser al menos Q100" },
+                                    })}
+                                />
+                                <p className="modal-field-help">El sistema no permite crear clientes con ingresos menores a Q100.</p>
+                                {errors.monthlyIncome && <p className="modal-field-error">{errors.monthlyIncome.message}</p>}
+                            </div>
+                        </div>
+
+                        <div className="modal-field">
+                            <label className="modal-label">Rol</label>
+                            <select
+                                className="modal-select"
+                                {...register("roleName", { required: "El rol es obligatorio" })}
+                                defaultValue="USER_ROLE"
+                            >
+                                <option value="USER_ROLE">USER_ROLE</option>
+                                <option value="ADMIN_ROLE">ADMIN_ROLE</option>
+                            </select>
+                            <p className="modal-field-help">ADMIN_ROLE crea administradores; USER_ROLE crea clientes.</p>
+                            {errors.roleName && <p className="modal-field-error">{errors.roleName.message}</p>}
                         </div>
 
                         {error && <p className="msg error">{error}</p>}

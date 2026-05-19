@@ -9,41 +9,79 @@ import {
     TableCellsIcon,
     HomeIcon,
 } from "@heroicons/react/24/outline";
+import { StarIcon } from "@heroicons/react/24/solid";
+import { useEffect, useState } from 'react';
+import { getFavorites } from '../../api/admin';
+import { normalizeRole } from "../../utils/authRole";
+
+const adminMenuItems = [
+    { label: "Dashboard", to: "/admin", icon: HomeIcon },
+    { label: "Cuentas", to: "/admin/accounts", icon: ChartBarIcon },
+    { label: "Transacciones", to: "/admin/transactions", icon: TableCellsIcon },
+    { label: "Usuarios", to: "/admin/users", icon: UsersIcon },
+    { label: "Productos", to: "/admin/products", icon: ShoppingBagIcon },
+    { label: "Servicios", to: "/admin/services", icon: ShoppingBagIcon },
+    // Reportes eliminado — no disponible
+];
+
+const customerMenuItems = [
+    { label: "Dashboard", to: "/client", icon: HomeIcon },
+    { label: "Cuentas", to: "/client/accounts", icon: ChartBarIcon },
+    { label: "Transacciones", to: "/client/transactions", icon: TableCellsIcon },
+    { label: "Productos", to: "/client/products", icon: ShoppingBagIcon },
+    { label: "Servicios", to: "/client/products", icon: ShoppingBagIcon },
+];
 
 /* ── Menú por rol (idéntico al original) ── */
 const menuItemsByRole = {
-    PLATFORM_ADMIN: [
-        { label: "Cuentas",        to: "/panel",               icon: ChartBarIcon   },
-        { label: "Transacciones",  to: "/panel/transactions",  icon: TableCellsIcon },
-        { label: "Usuarios",       to: "/panel/users",         icon: UsersIcon      },
-        { label: "Productos",      to: "/panel/products",      icon: ShoppingBagIcon},
-        { label: "Reportes",       to: "/panel/reports",       icon: ChartPieIcon   },
-    ],
-    RESTAURANT_ADMIN: [
-        { label: "Cuentas",        to: "/panel",               icon: ChartBarIcon   },
-        { label: "Transacciones",  to: "/panel/transactions",  icon: TableCellsIcon },
-        { label: "Usuarios",       to: "/panel/users",         icon: UsersIcon      },
-        { label: "Productos",      to: "/panel/products",      icon: ShoppingBagIcon},
-        { label: "Reportes",       to: "/panel/reports",       icon: ChartPieIcon   },
-    ],
-    CUSTOMER: [
-        { label: "Cuentas",        to: "/panel",               icon: HomeIcon       },
-        { label: "Transacciones",  to: "/panel/transactions",  icon: TableCellsIcon },
-        { label: "Productos",      to: "/panel/products",      icon: ShoppingBagIcon},
-        { label: "Reportes",       to: "/panel/reports",       icon: ChartPieIcon   },
-    ],
+    ADMIN_ROLE: adminMenuItems,
+    PLATFORM_ADMIN: adminMenuItems,
+    RESTAURANT_ADMIN: adminMenuItems,
+    USER_ROLE: customerMenuItems,
+    CUSTOMER: customerMenuItems,
 };
 
 export const Sidebar = () => {
     const location  = useLocation();
     const user      = useAuthStore((state) => state.user);
-    const role      = user?.role || "CUSTOMER";
-    const menuItems = menuItemsByRole[role] || menuItemsByRole.CUSTOMER;
+    const role      = normalizeRole(user?.role) || "USER_ROLE";
+    const menuItems = menuItemsByRole[role] || menuItemsByRole.USER_ROLE;
+    const [favorites, setFavorites] = useState([]);
+
+    useEffect(() => {
+        let mounted = true;
+        (async () => {
+            try {
+                    const res = await getFavorites();
+                    if (!mounted) return;
+                    setFavorites(res?.data || []);
+                } catch (err) {
+                     
+                    console.warn('getFavorites failed:', err);
+                }
+        })();
+        return () => { mounted = false; };
+    }, []);
+
+    // Quick-add form moved to Dashboard for better UX
 
     return (
         <aside className="sidebar">
             <nav className="sidebar-nav">
-                {menuItems.map((item, idx) => {
+                {favorites && favorites.length > 0 && (
+                    <div className="mb-3">
+                        <div className="text-xs text-text-on-dark-muted px-2 mb-2">Favoritos</div>
+                        {favorites.map((f) => (
+                            <Link key={f._id || f.id || f.accountId} to={`/client/accounts?fav=${f.accountId}`} className="sidebar-item">
+                                <StarIcon className="sidebar-item-icon text-yellow-400" />
+                                <span className="sidebar-item-label">{f.alias || f.accountNumber || f.accountId}</span>
+                            </Link>
+                        ))}
+                        <div className="sidebar-divider" />
+                    </div>
+                )}
+                {/* Quick-add moved to Dashboard */}
+                {menuItems.map((item) => {
                     const active = location.pathname === item.to;
 
                     return (

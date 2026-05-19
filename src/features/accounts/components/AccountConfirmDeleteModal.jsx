@@ -1,5 +1,4 @@
 // AccountConfirmDeleteModal.jsx — REDISEÑO VISUAL · Lógica intacta
-import { useMemo } from "react";
 import { useUIStore } from "../../../shared/components/ui/store/uiStore";
 
 const IconAlertTriangle = () => (

@@ -2,7 +2,7 @@ import axios from "axios";
 import { useAuthStore } from "../../features/auth/store/authStore";
 
 const axiosAuth = axios.create({
-    baseURL: import.meta.env.VITE_AUTH_URL,
+    baseURL: import.meta.env.VITE_AUTH_URL || import.meta.env.VITE_API_AUTH_URL || "http://localhost:5127/api/v1",
     timeout: 8000,
     headers: {
         "Content-Type": "application/json"
@@ -10,7 +10,7 @@ const axiosAuth = axios.create({
 });
 
 const axiosAdmin = axios.create({
-    baseURL: import.meta.env.VITE_ADMIN_URL,
+    baseURL: import.meta.env.VITE_ADMIN_URL || import.meta.env.VITE_API_BANK_URL || "http://localhost:3006/bankSystem/v1",
     timeout: 10000,
     headers: {
         "Content-Type": "application/json"
