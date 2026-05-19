@@ -29,10 +29,11 @@ export const CreateUserModal = ({ isOpen, onClose, onCreate, loading, error }) =
         formData.append("email",   values.email);
         formData.append("password", values.password);
         formData.append("phone",   values.phone);
+        formData.append("RoleName", values.roleName);
         // Campos administrativos
         if (values.dpi) formData.append("dpi", values.dpi);
         if (values.address) formData.append("address", values.address);
-        if (values.job) formData.append("job", values.job);
+        if (values.jobName) formData.append("jobName", values.jobName);
         if (values.monthlyIncome) formData.append("monthlyIncome", values.monthlyIncome);
         if (values.profilePicture?.[0]) {
             formData.append("profilePicture", values.profilePicture[0]);
@@ -205,7 +206,7 @@ export const CreateUserModal = ({ isOpen, onClose, onCreate, loading, error }) =
                                     className="modal-input"
                                     type="text"
                                     placeholder="Desarrollador"
-                                    {...register("job")}
+                                    {...register("jobName")}
                                 />
                             </div>
                             <div className="modal-field">
@@ -216,10 +217,26 @@ export const CreateUserModal = ({ isOpen, onClose, onCreate, loading, error }) =
                                     placeholder="5000"
                                     {...register("monthlyIncome", {
                                         valueAsNumber: true,
-                                        validate: v => (v === undefined || v === null || v === "" || Number(v) >= 0) || "Ingreso inválido",
+                                        min: { value: 100, message: "El ingreso mensual debe ser al menos Q100" },
                                     })}
                                 />
+                                <p className="modal-field-help">El sistema no permite crear clientes con ingresos menores a Q100.</p>
+                                {errors.monthlyIncome && <p className="modal-field-error">{errors.monthlyIncome.message}</p>}
                             </div>
+                        </div>
+
+                        <div className="modal-field">
+                            <label className="modal-label">Rol</label>
+                            <select
+                                className="modal-select"
+                                {...register("roleName", { required: "El rol es obligatorio" })}
+                                defaultValue="USER_ROLE"
+                            >
+                                <option value="USER_ROLE">USER_ROLE</option>
+                                <option value="ADMIN_ROLE">ADMIN_ROLE</option>
+                            </select>
+                            <p className="modal-field-help">ADMIN_ROLE crea administradores; USER_ROLE crea clientes.</p>
+                            {errors.roleName && <p className="modal-field-error">{errors.roleName.message}</p>}
                         </div>
 
                         {error && <p className="msg error">{error}</p>}

@@ -1,7 +1,8 @@
-// UserDetailModal.jsx — REDISEÑO VISUAL · Lógica intacta
-import { useState } from "react";
+// UserDetailModal.jsx — REDISEÑO VISUAL · Lógica extendida para edición y borrado
+import { useEffect, useState } from "react";
 import { Spinner } from "../../../shared/components/layouts/Spinner";
 import defaultAvatarImg from "../../../assets/img/hero.png";
+import { normalizeRole } from "../../../shared/utils/authRole";
 
 const IconX = () => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -16,12 +17,36 @@ const IconAlertCircle = () => (
 );
 
 export const UserDetailModal = ({
-    isOpen, onClose, user, currentUserId, onSaveRole, loading,
+    isOpen, onClose, user, currentUserId, onSaveRole, onSaveUser, onDeleteUser, loading,
 }) => {
-    if (!isOpen || !user) return null;
+    const normalizedRole = normalizeRole(user?.role) || "USER_ROLE";
+    const [role, setRole] = useState(normalizedRole);
+    const [form, setForm] = useState({
+        name: user?.name || "",
+        surname: user?.surname || "",
+        email: user?.email || "",
+        phone: user?.phone || "",
+        address: user?.address || "",
+        jobName: user?.jobName || "",
+        monthlyIncome: user?.monthlyIncome || "",
+    });
 
-    /* — Estado y lógica originales intactos — */
-    const [role, setRole] = useState(user?.role || "USER_ROLE");
+    useEffect(() => {
+        if (!isOpen || !user) return;
+
+        setRole(normalizeRole(user?.role) || "USER_ROLE");
+        setForm({
+            name: user?.name || "",
+            surname: user?.surname || "",
+            email: user?.email || "",
+            phone: user?.phone || "",
+            address: user?.address || "",
+            jobName: user?.jobName || "",
+            monthlyIncome: user?.monthlyIncome || "",
+        });
+    }, [user, isOpen]);
+
+    if (!isOpen || !user) return null;
 
     const avatarSrc = (() => {
         const value = user?.profilePicture?.trim();
@@ -32,11 +57,28 @@ export const UserDetailModal = ({
     })();
 
     const isCurrentUser = currentUserId === user.id;
+    const isOtherAdmin = normalizedRole === "ADMIN_ROLE" && !isCurrentUser;
     const hasChanges    = role !== user.role;
+    const hasProfileChanges =
+        form.name !== (user?.name || "") ||
+        form.surname !== (user?.surname || "") ||
+        form.email !== (user?.email || "") ||
+        form.phone !== (user?.phone || "") ||
+        form.address !== (user?.address || "") ||
+        form.jobName !== (user?.jobName || "") ||
+        String(form.monthlyIncome ?? "") !== String(user?.monthlyIncome ?? "");
 
     const handleSave = async () => {
         if (!hasChanges || isCurrentUser) { onClose(); return; }
         await onSaveRole(user, role);
+    };
+
+    const handleDelete = async () => {
+        if (isCurrentUser || isOtherAdmin) {
+            return;
+        }
+
+        await onDeleteUser?.(user);
     };
 
     const roleBadge = {
@@ -104,6 +146,38 @@ export const UserDetailModal = ({
                         </div>
                     </div>
 
+                    {/* Campos editables */}
+                    <div className="modal-grid-2" style={{ marginBottom: 16 }}>
+                        <div className="modal-field">
+                            <label className="modal-label">Nombre</label>
+                            <input className="modal-input" value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} readOnly={isOtherAdmin} />
+                        </div>
+                        <div className="modal-field">
+                            <label className="modal-label">Apellido</label>
+                            <input className="modal-input" value={form.surname} onChange={(e) => setForm((prev) => ({ ...prev, surname: e.target.value }))} readOnly={isOtherAdmin} />
+                        </div>
+                        <div className="modal-field">
+                            <label className="modal-label">Email</label>
+                            <input className="modal-input" value={form.email} onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))} readOnly={isOtherAdmin} />
+                        </div>
+                        <div className="modal-field">
+                            <label className="modal-label">Teléfono</label>
+                            <input className="modal-input" value={form.phone} onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))} readOnly={isOtherAdmin} />
+                        </div>
+                        <div className="modal-field">
+                            <label className="modal-label">Dirección</label>
+                            <input className="modal-input" value={form.address} onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))} readOnly={isOtherAdmin} />
+                        </div>
+                        <div className="modal-field">
+                            <label className="modal-label">Trabajo / Puesto</label>
+                            <input className="modal-input" value={form.jobName} onChange={(e) => setForm((prev) => ({ ...prev, jobName: e.target.value }))} readOnly={isOtherAdmin} />
+                        </div>
+                        <div className="modal-field">
+                            <label className="modal-label">Ingresos mensuales</label>
+                            <input className="modal-input" type="number" min="100" value={form.monthlyIncome} onChange={(e) => setForm((prev) => ({ ...prev, monthlyIncome: e.target.value }))} readOnly={isOtherAdmin} />
+                        </div>
+                    </div>
+
                     {/* Rol */}
                     <div className="modal-field">
                         <label className="modal-label">Cambiar rol</label>
@@ -111,14 +185,14 @@ export const UserDetailModal = ({
                             className="modal-select"
                             value={role}
                             onChange={(e) => setRole(e.target.value)}
-                            disabled={isCurrentUser}
+                            disabled={isCurrentUser || isOtherAdmin}
                         >
                             <option value="ADMIN_ROLE">ADMIN_ROLE</option>
                             <option value="USER_ROLE">USER_ROLE</option>
                         </select>
-                        {isCurrentUser && (
+                        {(isCurrentUser || isOtherAdmin) && (
                             <p className="modal-field-error" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                                <IconAlertCircle /> No puedes cambiar tu propio rol.
+                                <IconAlertCircle /> {isOtherAdmin ? "No puedes editar otro administrador." : "No puedes cambiar tu propio rol."}
                             </p>
                         )}
                     </div>
@@ -131,8 +205,17 @@ export const UserDetailModal = ({
                     </button>
                     <button
                         type="button"
+                        onClick={() => onSaveUser?.(user, form)}
+                        disabled={loading || isOtherAdmin || !hasProfileChanges}
+                        className="btn-secondary"
+                        style={{ width: 'auto', padding: '9px 22px' }}
+                    >
+                        {loading ? <><span className="spinner" /> Guardando...</> : 'Guardar datos'}
+                    </button>
+                    <button
+                        type="button"
                         onClick={handleSave}
-                        disabled={loading || !hasChanges || isCurrentUser}
+                        disabled={loading || !hasChanges || isCurrentUser || isOtherAdmin}
                         className="btn-primary"
                         style={{ width: 'auto', padding: '9px 22px' }}
                     >
@@ -140,6 +223,15 @@ export const UserDetailModal = ({
                             ? <><span className="spinner" /> Guardando...</>
                             : 'Guardar cambios'
                         }
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleDelete}
+                        disabled={loading || isCurrentUser || isOtherAdmin}
+                        className="btn-danger"
+                        style={{ width: 'auto', padding: '9px 22px' }}
+                    >
+                        Eliminar usuario
                     </button>
                 </div>
             </div>
