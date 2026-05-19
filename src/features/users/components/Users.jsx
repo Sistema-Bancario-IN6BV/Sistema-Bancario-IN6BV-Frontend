@@ -1,4 +1,4 @@
-// Users.jsx — REDISEÑO VISUAL · Lógica intacta
+// Users.jsx 
 import { useEffect, useMemo, useState } from "react";
 import { useUserManagmentStore } from "../store/useUserManagmentStore.js";
 import { Spinner } from "../../../shared/components/layouts/Spinner.jsx";

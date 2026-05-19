@@ -1,14 +1,16 @@
+// Products.jsx — REDISEÑO VISUAL ÚNICAMENTE
+// Toda la lógica, estados, efectos, handlers, API calls son idénticos al original
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuthStore } from '../../auth/store/authStore';
 import { useAccountStore } from '../../accounts/store/useAccountStore';
 import {
-    getProducts,
-    createProduct,
-    updateProduct,
-    activateProduct,
-    deactivateProduct,
-    purchaseProduct,
-    getPurchasedProductsByAccount,
+  getProducts,
+  createProduct,
+  updateProduct,
+  activateProduct,
+  deactivateProduct,
+  purchaseProduct,
+  getPurchasedProductsByAccount,
 } from '../../../shared/api/products';
 import { showSuccess, showError } from '../../../shared/utils/toast';
 import { normalizeRole } from '../../../shared/utils/authRole';
@@ -20,768 +22,829 @@ import {
   CurrencyDollarIcon,
   ShieldCheckIcon,
   PencilIcon,
-    ShoppingBagIcon,
-    CheckCircleIcon,
-
+  ShoppingBagIcon,
+  CheckCircleIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   XMarkIcon,
-  CheckIcon
+  CheckIcon,
 } from "@heroicons/react/24/outline";
 
 export const Products = () => {
-    const { user } = useAuthStore();
-    const { accounts = [], getAccounts } = useAccountStore();
-    const [products, setProducts] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [showModal, setShowModal] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState('all');
-    const [currentPage, setCurrentPage] = useState(1);
-    const [editingId, setEditingId] = useState(null);
-    const [form, setForm] = useState({ name: '', description: '', price: '' });
-    const [formLoading, setFormLoading] = useState(false);
-    const [purchaseOpen, setPurchaseOpen] = useState(false);
-    const [selectedProduct, setSelectedProduct] = useState(null);
-    const [selectedAccountId, setSelectedAccountId] = useState('');
-    const [purchaseLoading, setPurchaseLoading] = useState(false);
-    const [purchaseHistory, setPurchaseHistory] = useState([]);
-    const [historyLoading, setHistoryLoading] = useState(false);
-    const itemsPerPage = 10;
-    const normalizedRole = normalizeRole(user?.role);
-    const isAdmin = normalizedRole === 'ADMIN_ROLE';
-    const isClient = normalizedRole === 'USER_ROLE';
-    const activeAccounts = useMemo(
-        () => accounts.filter((account) => account?.status === 'ACTIVE'),
-        [accounts]
-    );
+  // ── Estado y lógica originales 100% intactos ──
+  const { user }                         = useAuthStore();
+  const { accounts = [], getAccounts }   = useAccountStore();
+  const [products,         setProducts]         = useState([]);
+  const [loading,          setLoading]          = useState(true);
+  const [showModal,        setShowModal]        = useState(false);
+  const [searchTerm,       setSearchTerm]       = useState('');
+  const [statusFilter,     setStatusFilter]     = useState('all');
+  const [currentPage,      setCurrentPage]      = useState(1);
+  const [editingId,        setEditingId]        = useState(null);
+  const [form,             setForm]             = useState({ name: '', description: '', price: '' });
+  const [formLoading,      setFormLoading]      = useState(false);
+  const [purchaseOpen,     setPurchaseOpen]     = useState(false);
+  const [selectedProduct,  setSelectedProduct]  = useState(null);
+  const [selectedAccountId,setSelectedAccountId] = useState('');
+  const [purchaseLoading,  setPurchaseLoading]  = useState(false);
+  const [purchaseHistory,  setPurchaseHistory]  = useState([]);
+  const [historyLoading,   setHistoryLoading]   = useState(false);
+  const itemsPerPage    = 10;
+  const normalizedRole  = normalizeRole(user?.role);
+  const isAdmin         = normalizedRole === 'ADMIN_ROLE';
+  const isClient        = normalizedRole === 'USER_ROLE';
 
-    const moneyFormatter = useMemo(
-        () => new Intl.NumberFormat('es-GT', { style: 'currency', currency: 'GTQ', minimumFractionDigits: 2 }),
-        []
-    );
+  const activeAccounts = useMemo(
+    () => accounts.filter((account) => account?.status === 'ACTIVE'),
+    [accounts]
+  );
 
-    // Fetch products on mount
-    useEffect(() => {
-        fetchProducts();
-    }, []);
+  const moneyFormatter = useMemo(
+    () => new Intl.NumberFormat('es-GT', { style: 'currency', currency: 'GTQ', minimumFractionDigits: 2 }),
+    []
+  );
 
-    useEffect(() => {
-        if (!isClient) {
-            return;
-        }
+  // ── Efectos originales intactos ──
+  useEffect(() => { fetchProducts(); }, []);
 
-        const loadClientContext = async () => {
-            try {
-                const loadedAccounts = await getAccounts();
-                const accountList = Array.isArray(loadedAccounts) ? loadedAccounts : [];
-                const accountIds = accountList.map((a) => a?._id || a?.id).filter(Boolean);
-
-                if (accountIds.length === 0) {
-                    setPurchaseHistory([]);
-                    return;
-                }
-
-                const results = await Promise.allSettled(
-                    accountIds.map((accountId) => getPurchasedProductsByAccount(accountId))
-                );
-
-                const mergedHistory = results.flatMap((result, index) => {
-                    if (result.status !== 'fulfilled') return [];
-                    const accountId = accountIds[index];
-                    const data = result.value?.data?.purchases ?? result.value?.data ?? [];
-                    const purchases = Array.isArray(data) ? data : [];
-                    return purchases.map((purchase) => ({ ...purchase, accountId }));
-                });
-
-                mergedHistory.sort((left, right) => new Date(right?.createdAt || right?.date || 0) - new Date(left?.createdAt || left?.date || 0));
-                setPurchaseHistory(mergedHistory);
-            } catch (error) {
-                 
-                console.warn('No se pudo cargar el contexto de compras:', error);
-            }
-        };
-
-        loadClientContext().catch((err) => {
-             
-            console.warn('loadClientContext failed:', err);
+  useEffect(() => {
+    if (!isClient) return;
+    const loadClientContext = async () => {
+      try {
+        const loadedAccounts = await getAccounts();
+        const accountList    = Array.isArray(loadedAccounts) ? loadedAccounts : [];
+        const accountIds     = accountList.map((a) => a?._id || a?.id).filter(Boolean);
+        if (accountIds.length === 0) { setPurchaseHistory([]); return; }
+        const results = await Promise.allSettled(
+          accountIds.map((accountId) => getPurchasedProductsByAccount(accountId))
+        );
+        const mergedHistory = results.flatMap((result, index) => {
+          if (result.status !== 'fulfilled') return [];
+          const accountId = accountIds[index];
+          const data      = result.value?.data?.purchases ?? result.value?.data ?? [];
+          const purchases = Array.isArray(data) ? data : [];
+          return purchases.map((purchase) => ({ ...purchase, accountId }));
         });
-         
-    }, [isClient, getAccounts]);
-
-    useEffect(() => {
-        if (!isAdmin) {
-            setStatusFilter('active');
-        }
-    }, [isAdmin]);
-
-    const fetchProducts = async () => {
-        setLoading(true);
-        try {
-            const response = await getProducts();
-            console.log('Raw API Response:', response);
-            
-            // El backend devuelve { success, total, products: [...] }
-            let productsData = response.data?.products || response.data?.data || response.data || [];
-            console.log('Products Data after extraction:', productsData);
-            
-            // Si es un objeto con propiedades pero no un array, convertirlo
-            if (productsData && !Array.isArray(productsData) && typeof productsData === 'object') {
-                productsData = Object.values(productsData);
-            }
-            
-            const finalProducts = Array.isArray(productsData) ? productsData : [];
-            // Normalize isActive to boolean in case backend returns strings/numbers
-            const normalized = finalProducts.map(p => {
-                const raw = p?.isActive;
-                const isActiveBool = typeof raw === 'boolean'
-                    ? raw
-                    : typeof raw === 'string'
-                        ? raw === 'true' || raw === '1'
-                        : typeof raw === 'number'
-                            ? raw === 1
-                            : !!raw;
-
-                return { ...p, isActive: isActiveBool };
-            });
-            console.log('Final Products:', normalized);
-
-            setProducts(normalized);
-        } catch (err) {
-            showError('Error al cargar productos');
-            console.error('Error fetching products:', err);
-            setProducts([]);
-        } finally {
-            setLoading(false);
-        }
+        mergedHistory.sort((l, r) => new Date(r?.createdAt || r?.date || 0) - new Date(l?.createdAt || l?.date || 0));
+        setPurchaseHistory(mergedHistory);
+      } catch (error) { console.warn('No se pudo cargar el contexto de compras:', error); }
     };
+    loadClientContext().catch((err) => console.warn('loadClientContext failed:', err));
+  }, [isClient, getAccounts]);
 
-    const fetchPurchaseHistory = async (accountList = accounts) => {
-        if (!isClient) {
-            setPurchaseHistory([]);
-            return;
-        }
+  useEffect(() => { if (!isAdmin) setStatusFilter('active'); }, [isAdmin]);
 
-        const accountIds = (accountList || []).map((account) => account?._id || account?.id).filter(Boolean);
+  // ── fetchProducts original intacto ──
+  const fetchProducts = async () => {
+    setLoading(true);
+    try {
+      const response = await getProducts();
+      let productsData = response.data?.products || response.data?.data || response.data || [];
+      if (productsData && !Array.isArray(productsData) && typeof productsData === 'object') {
+        productsData = Object.values(productsData);
+      }
+      const finalProducts = Array.isArray(productsData) ? productsData : [];
+      const normalized    = finalProducts.map(p => {
+        const raw         = p?.isActive;
+        const isActiveBool = typeof raw === 'boolean' ? raw
+          : typeof raw === 'string'  ? raw === 'true' || raw === '1'
+          : typeof raw === 'number'  ? raw === 1
+          : !!raw;
+        return { ...p, isActive: isActiveBool };
+      });
+      setProducts(normalized);
+    } catch (err) {
+      showError('Error al cargar productos');
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        if (accountIds.length === 0) {
-            setPurchaseHistory([]);
-            return;
-        }
+  const fetchPurchaseHistory = async (accountList = accounts) => {
+    if (!isClient) { setPurchaseHistory([]); return; }
+    const accountIds = (accountList || []).map((a) => a?._id || a?.id).filter(Boolean);
+    if (accountIds.length === 0) { setPurchaseHistory([]); return; }
+    setHistoryLoading(true);
+    try {
+      const results = await Promise.allSettled(
+        accountIds.map((accountId) => getPurchasedProductsByAccount(accountId))
+      );
+      const mergedHistory = results.flatMap((result, index) => {
+        if (result.status !== 'fulfilled') return [];
+        const accountId = accountIds[index];
+        const data      = result.value?.data?.purchases ?? result.value?.data ?? [];
+        const purchases = Array.isArray(data) ? data : [];
+        return purchases.map((purchase) => ({ ...purchase, accountId }));
+      });
+      mergedHistory.sort((l, r) => new Date(r?.createdAt || r?.date || 0) - new Date(l?.createdAt || l?.date || 0));
+      setPurchaseHistory(mergedHistory);
+    } catch (error) {
+      console.warn('No se pudo cargar el historial de compras:', error);
+      setPurchaseHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
 
-        setHistoryLoading(true);
-        try {
-            const results = await Promise.allSettled(
-                accountIds.map((accountId) => getPurchasedProductsByAccount(accountId))
-            );
+  // ── Filtrado y paginación originales intactos ──
+  const filteredProducts = useMemo(() => {
+    if (!Array.isArray(products)) return [];
+    const search = (searchTerm || '').toLowerCase().trim();
+    let result = products.slice();
+    if (!isAdmin) result = result.filter(p => p?.isActive);
+    if (statusFilter === 'active')   result = result.filter(p => p?.isActive);
+    if (statusFilter === 'inactive') result = result.filter(p => !p?.isActive);
+    if (!search) return result;
+    return result.filter(p => {
+      const name        = (p?.name        || '').toLowerCase();
+      const description = (p?.description || '').toLowerCase();
+      return name.includes(search) || description.includes(search);
+    });
+  }, [products, searchTerm, statusFilter, isAdmin]);
 
-            const mergedHistory = results.flatMap((result, index) => {
-                if (result.status !== 'fulfilled') {
-                    return [];
-                }
+  const totalPages       = Math.ceil(filteredProducts.length / itemsPerPage);
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredProducts.slice(start, start + itemsPerPage);
+  }, [filteredProducts, currentPage]);
 
-                const accountId = accountIds[index];
-                const data = result.value?.data?.purchases ?? result.value?.data ?? [];
-                const purchases = Array.isArray(data) ? data : [];
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter]);
 
-                return purchases.map((purchase) => ({
-                    ...purchase,
-                    accountId,
-                }));
-            });
+  // ── Handlers originales intactos ──
+  const handleChange       = (e) => { const { name, value } = e.target; setForm(prev => ({ ...prev, [name]: value })); };
+  const openCreateModal    = () => { setEditingId(null); setForm({ name: '', description: '', price: '' }); setShowModal(true); };
+  const openEditModal      = (product) => {
+    const productId = product?._id || product?.id;
+    setEditingId(productId);
+    setForm({ name: product?.name || '', description: product?.description || '', price: product?.price || '' });
+    setShowModal(true);
+  };
+  const openPurchaseModal  = (product) => {
+    const defaultAccount = activeAccounts[0];
+    setSelectedProduct(product);
+    setSelectedAccountId(defaultAccount?._id || defaultAccount?.id || '');
+    setPurchaseOpen(true);
+  };
 
-            mergedHistory.sort((left, right) => new Date(right?.createdAt || right?.date || 0) - new Date(left?.createdAt || left?.date || 0));
-            setPurchaseHistory(mergedHistory);
-        } catch (error) {
-            console.warn('No se pudo cargar el historial de compras:', error);
-            setPurchaseHistory([]);
-        } finally {
-            setHistoryLoading(false);
-        }
-    };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setFormLoading(true);
+    try {
+      const payload = { ...form, price: Number(form.price) };
+      if (editingId) {
+        await updateProduct(editingId, payload);
+        showSuccess('Producto actualizado correctamente');
+      } else {
+        await createProduct(payload);
+        showSuccess('Producto creado correctamente');
+      }
+      setForm({ name: '', description: '', price: '' });
+      setShowModal(false);
+      setEditingId(null);
+      fetchProducts();
+    } catch (err) {
+      showError(err?.response?.data?.message || err.message || 'Error al guardar producto');
+    } finally {
+      setFormLoading(false);
+    }
+  };
 
-    // Filter and paginate (supports statusFilter: 'all' | 'active' | 'inactive')
-    const filteredProducts = useMemo(() => {
-        if (!Array.isArray(products)) return [];
-        const search = (searchTerm || '').toLowerCase().trim();
+  const handlePurchase = async (e) => {
+    e.preventDefault();
+    if (!selectedProduct)  { showError('Selecciona un producto'); return; }
+    if (!selectedAccountId){ showError('Selecciona una cuenta activa'); return; }
+    setPurchaseLoading(true);
+    try {
+      const response = await purchaseProduct({
+        productId: selectedProduct._id || selectedProduct.id,
+        accountId: selectedAccountId,
+      });
+      if (response?.data?.success === false) { showError(response?.data?.message || 'No se pudo completar la compra'); return; }
+      showSuccess('Producto comprado correctamente');
+      setPurchaseOpen(false);
+      setSelectedProduct(null);
+      await Promise.all([fetchProducts(), getAccounts(), fetchPurchaseHistory()]);
+    } catch (error) {
+      showError(error?.response?.data?.message || error.message || 'Error al comprar producto');
+    } finally {
+      setPurchaseLoading(false);
+    }
+  };
 
-        // start from all products, then apply status filter
-        let result = products.slice();
+  const handleToggleActive = async (productId, isCurrentlyActive) => {
+    try {
+      if (isCurrentlyActive) await deactivateProduct(productId); else await activateProduct(productId);
+      showSuccess(isCurrentlyActive ? 'Producto desactivado' : 'Producto activado');
+      fetchProducts();
+    } catch (error) {
+      showError('Error al cambiar estado del producto');
+    }
+  };
 
-        if (!isAdmin) {
-            result = result.filter(p => p?.isActive);
-        }
+  // ── glass panel helper ──
+  const glassPanel = {
+    borderRadius: '16px',
+    background: 'rgba(255,255,255,0.04)',
+    backdropFilter: 'blur(16px)',
+    WebkitBackdropFilter: 'blur(16px)',
+    border: '1px solid rgba(255,255,255,0.09)',
+    boxShadow: '0 8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)',
+    overflow: 'hidden',
+  };
 
-        if (statusFilter === 'active') {
-            result = result.filter(p => p?.isActive);
-        } else if (statusFilter === 'inactive') {
-            result = result.filter(p => !p?.isActive);
-        }
+  return (
+    <div style={{
+      minHeight: '100vh',
+      padding: 'clamp(16px, 3vw, 32px)',
+      background: 'radial-gradient(ellipse 70% 50% at 10% 0%, rgba(79,142,247,0.07) 0%, transparent 55%), var(--dash-bg, #070d1a)',
+    }}>
+      <div style={{ maxWidth: '1440px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-        if (!search) return result;
+        {/* ══ Hero Header ══ */}
+        <section style={{
+          ...glassPanel,
+          padding: 'clamp(24px,4vw,40px)',
+          position: 'relative',
+          background: 'linear-gradient(135deg, rgba(10,37,64,0.92) 0%, rgba(26,75,140,0.72) 55%, rgba(79,142,247,0.14) 100%)',
+          border: '1px solid rgba(79,142,247,0.2)',
+        }}>
+          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
+            background: 'radial-gradient(ellipse 55% 70% at 90% 10%, rgba(79,142,247,0.18) 0%, transparent 55%), radial-gradient(ellipse 40% 50% at 10% 90%, rgba(0,212,160,0.1) 0%, transparent 50%)' }} />
+          <div style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none',
+            backgroundImage: 'linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)',
+            backgroundSize: '48px 48px' }} />
 
-        return result.filter(p => {
-            const name = (p?.name || '').toLowerCase();
-            const description = (p?.description || '').toLowerCase();
-            return name.includes(search) || description.includes(search);
-        });
-    }, [products, searchTerm, statusFilter, isAdmin]);
-
-    const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
-    const paginatedProducts = useMemo(() => {
-        const start = (currentPage - 1) * itemsPerPage;
-        return filteredProducts.slice(start, start + itemsPerPage);
-    }, [filteredProducts, currentPage]);
-
-    // Reset to page 1 when search or status filter changes
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [searchTerm, statusFilter]);
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setForm(prev => ({ ...prev, [name]: value }));
-    };
-
-    const openCreateModal = () => {
-        setEditingId(null);
-        setForm({ name: '', description: '', price: '' });
-        setShowModal(true);
-    };
-
-    const openEditModal = (product) => {
-        const productId = product?._id || product?.id;
-        setEditingId(productId);
-        setForm({
-            name: product?.name || '',
-            description: product?.description || '',
-            price: product?.price || ''
-        });
-        console.log('Opening edit modal for product:', product);
-        setShowModal(true);
-    };
-
-    const openPurchaseModal = (product) => {
-        const defaultAccount = activeAccounts[0];
-        setSelectedProduct(product);
-        setSelectedAccountId(defaultAccount?._id || defaultAccount?.id || '');
-        setPurchaseOpen(true);
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setFormLoading(true);
-        try {
-            const payload = { ...form, price: Number(form.price) };
-            
-            if (editingId) {
-                await updateProduct(editingId, payload);
-                showSuccess('Producto actualizado correctamente');
-            } else {
-                await createProduct(payload);
-                showSuccess('Producto creado correctamente');
-            }
-            
-            setForm({ name: '', description: '', price: '' });
-            setShowModal(false);
-            setEditingId(null);
-            fetchProducts();
-        } catch (err) {
-            showError(err?.response?.data?.message || err.message || 'Error al guardar producto');
-        } finally {
-            setFormLoading(false);
-        }
-    };
-
-    const handlePurchase = async (e) => {
-        e.preventDefault();
-
-        if (!selectedProduct) {
-            showError('Selecciona un producto');
-            return;
-        }
-
-        if (!selectedAccountId) {
-            showError('Selecciona una cuenta activa');
-            return;
-        }
-
-        setPurchaseLoading(true);
-        try {
-            const response = await purchaseProduct({
-                productId: selectedProduct._id || selectedProduct.id,
-                accountId: selectedAccountId,
-            });
-
-            if (response?.data?.success === false) {
-                showError(response?.data?.message || 'No se pudo completar la compra');
-                return;
-            }
-
-            showSuccess('Producto comprado correctamente');
-            setPurchaseOpen(false);
-            setSelectedProduct(null);
-            await Promise.all([fetchProducts(), getAccounts(), fetchPurchaseHistory()]);
-        } catch (error) {
-            showError(error?.response?.data?.message || error.message || 'Error al comprar producto');
-        } finally {
-            setPurchaseLoading(false);
-        }
-    };
-
-
-
-    const handleToggleActive = async (productId, isCurrentlyActive) => {
-        try {
-            if (isCurrentlyActive) {
-                await deactivateProduct(productId);
-                showSuccess('Producto desactivado');
-            } else {
-                await activateProduct(productId);
-                showSuccess('Producto activado');
-            }
-            fetchProducts();
-        } catch (error) {
-            console.warn('No se pudo cambiar el estado del producto:', error);
-            showError('Error al cambiar estado del producto');
-        }
-    };
-
-
-    return (
-        <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(46,111,212,0.10),_transparent_28%),linear-gradient(180deg,_#f4f8fc_0%,_#edf3f9_100%)] p-4 sm:p-6 lg:p-8">
-            <div className="mx-auto max-w-[1440px] space-y-6">
-                {/* Hero Section */}
-                <section className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-[linear-gradient(135deg,_#0a2540_0%,_#123b67_55%,_#1a4b8c_100%)] px-6 py-6 text-white shadow-[0_20px_60px_rgba(10,37,64,0.22)] sm:px-8 sm:py-8">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(90,156,245,0.28),_transparent_26%),radial-gradient(circle_at_bottom_left,_rgba(0,196,140,0.16),_transparent_25%)]" />
-                    <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-                        <div className="max-w-3xl space-y-4">
-                            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.24em] text-white/85 backdrop-blur">
-                                <TagIcon className="h-4 w-4" />
-                                Catálogo Financiero
-                            </div>
-                            <div className="space-y-2">
-                                <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-5xl">
-                                    {isAdmin ? 'Productos Bancarios' : 'Catálogo de Productos'}
-                                </h1>
-                                <p className="max-w-2xl text-sm leading-6 text-white/72 sm:text-base">
-                                    {isAdmin
-                                        ? 'Gestión de carteras, préstamos y cuentas especiales. Define la oferta comercial del banco.'
-                                        : 'Explora la oferta activa y compra productos desde una de tus cuentas.'}
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex flex-wrap gap-3 xl:justify-end">
-                            {isAdmin ? (
-                                <button
-                                    onClick={openCreateModal}
-                                    className="inline-flex items-center gap-2 rounded-full bg-[#0f7bdf] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#0f7bdf]/30 transition hover:-translate-y-0.5 hover:bg-[#0c67bc]"
-                                >
-                                    <PlusIcon className="h-4 w-4" />
-                                    Crear Producto
-                                </button>
-                            ) : (
-                                <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-5 py-3 text-sm font-semibold text-white/90 backdrop-blur">
-                                    <ShoppingBagIcon className="h-4 w-4" />
-                                    Solo productos activos
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </section>
-
-                {/* Stats Row */}
-                <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    {[
-                        { label: "Total de Productos", value: products.length, icon: BuildingStorefrontIcon, tone: "from-blue-600 to-slate-900" },
-                        { label: "Precio Promedio", value: products.length > 0 ? `Q ${(products.reduce((sum, p) => sum + (Number(p.price) || 0), 0) / products.length).toFixed(2)}` : "Q 0", icon: CurrencyDollarIcon, tone: "from-emerald-500 to-teal-700" },
-                        { label: "Activos", value: products.filter(p => p.isActive).length, icon: ShieldCheckIcon, tone: "from-indigo-500 to-blue-800" },
-                        { label: "Inactivos", value: products.filter(p => !p.isActive).length, icon: TagIcon, tone: "from-amber-500 to-orange-700" },
-                    ].map(({ label, value, icon: Icon, tone }) => (
-                        <article key={label} className="group relative overflow-hidden rounded-[1.5rem] border border-white/70 bg-white/90 p-5 shadow-[0_10px_30px_rgba(10,37,64,0.08)] backdrop-blur transition hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(10,37,64,0.12)]">
-                            <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${tone}`} />
-                            <div className="flex items-start justify-between gap-4">
-                                <div className="space-y-1">
-                                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{label}</p>
-                                    <p className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-[2rem]">{value}</p>
-                                </div>
-                                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${tone} text-white shadow-lg`}>
-                                    <Icon className="h-6 w-6" />
-                                </div>
-                            </div>
-                        </article>
-                    ))}
-                </section>
-
-                {/* Debug panel removed */}
-
-                {/* Search Section */}
-                <section className="rounded-[1.5rem] border border-white/70 bg-white/88 p-4 shadow-[0_18px_50px_rgba(10,37,64,0.08)] backdrop-blur sm:p-6">
-                    <div className="relative">
-                        <MagnifyingGlassIcon className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
-                        <input
-                            type="text"
-                            placeholder="Buscar por nombre o descripción..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full rounded-xl border border-slate-200 bg-white pl-12 pr-4 py-2.5 text-sm placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
-                        />
-                    </div>
-
-                    {isAdmin && (
-                        <div className="mt-3 flex items-center gap-3">
-                            <span className="text-sm text-slate-600">Mostrar:</span>
-                            <div className="inline-flex overflow-hidden rounded-md border border-slate-200">
-                                <button
-                                    type="button"
-                                    onClick={() => setStatusFilter('all')}
-                                    className={`px-3 py-1 text-sm ${statusFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
-                                >
-                                    Todos
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setStatusFilter('active')}
-                                    className={`px-3 py-1 text-sm ${statusFilter === 'active' ? 'bg-blue-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
-                                >
-                                    Activos
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setStatusFilter('inactive')}
-                                    className={`px-3 py-1 text-sm ${statusFilter === 'inactive' ? 'bg-blue-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
-                                >
-                                    Inactivos
-                                </button>
-                            </div>
-                        </div>
-                    )}
-                </section>
-
-                {/* Products Table */}
-                <section className="rounded-[1.5rem] border border-white/70 bg-white/88 shadow-[0_18px_50px_rgba(10,37,64,0.08)] backdrop-blur overflow-hidden">
-                    {loading ? (
-                        <div className="flex items-center justify-center py-20">
-                            <div className="text-center">
-                                <div className="mb-4 inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                                <p className="text-slate-600">Cargando productos...</p>
-                            </div>
-                        </div>
-                    ) : paginatedProducts.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-16 px-4">
-                            <BuildingStorefrontIcon className="h-12 w-12 mb-4 text-slate-300" />
-                            <h3 className="text-lg font-semibold text-slate-900 mb-1">
-                                {searchTerm ? 'No se encontraron productos' : 'Sin productos'}
-                            </h3>
-                            <p className="text-slate-500 text-sm">
-                                {searchTerm ? 'Intenta con otros términos de búsqueda' : 'Crea tu primer producto para comenzar'}
-                            </p>
-                        </div>
-                    ) : (
-                        <>
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead>
-                                        <tr className="border-b border-slate-200 bg-slate-50">
-                                            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase">Nombre</th>
-                                            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase">Descripción</th>
-                                            <th className="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase">Precio</th>
-                                            <th className="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase">Estado</th>
-                                            <th className="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase">Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-200">
-                                        {paginatedProducts.map((product, idx) => {
-                                            const productId = product?._id || product?.id || `product-${idx}`;
-                                            return (
-                                            <tr key={productId} className="transition hover:bg-slate-50">
-                                                <td className="px-6 py-4 text-sm font-medium text-slate-900">{product?.name || 'Sin nombre'}</td>
-                                                <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">
-                                                    {product?.description || '-'}
-                                                </td>
-                                                <td className="px-6 py-4 text-sm font-semibold text-right text-slate-900">
-                                                    Q {(Number(product?.price) || 0).toFixed(2)}
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <button
-                                                        onClick={() => isAdmin ? handleToggleActive(productId, product?.isActive) : openPurchaseModal(product)}
-                                                        disabled={!isAdmin && !product?.isActive}
-                                                        className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold transition ${
-                                                            isAdmin
-                                                                ? (product?.isActive
-                                                                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200')
-                                                                : (product?.isActive
-                                                                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                                                                    : 'bg-slate-100 text-slate-400 cursor-not-allowed')
-                                                        }`}
-                                                    >
-                                                        {isAdmin ? (
-                                                            product?.isActive ? (
-                                                                <>
-                                                                    <CheckIcon className="h-4 w-4" />
-                                                                    Activo
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <XMarkIcon className="h-4 w-4" />
-                                                                    Inactivo
-                                                                </>
-                                                            )
-                                                        ) : (
-                                                            <>
-                                                                <ShoppingBagIcon className="h-4 w-4" />
-                                                                Comprar
-                                                            </>
-                                                        )}
-                                                    </button>
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <div className="flex items-center justify-center gap-2">
-                                                        {isAdmin ? (
-                                                            <button
-                                                                onClick={() => openEditModal(product)}
-                                                                className="rounded-lg p-2 text-slate-600 transition hover:bg-blue-100 hover:text-blue-600"
-                                                                title="Editar"
-                                                            >
-                                                                <PencilIcon className="h-4 w-4" />
-                                                            </button>
-                                                        ) : (
-                                                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                                                                <CheckCircleIcon className="h-4 w-4" />
-                                                                {product?.isActive ? 'Disponible' : 'No disponible'}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            {/* Pagination */}
-                            {totalPages > 1 && (
-                                <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-6 py-4">
-                                    <div className="text-sm text-slate-600">
-                                        Página <span className="font-semibold">{currentPage}</span> de{' '}
-                                        <span className="font-semibold">{totalPages}</span> (Total:{' '}
-                                        <span className="font-semibold">{filteredProducts.length}</span>)
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                            disabled={currentPage === 1}
-                                            className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
-                                        >
-                                            <ChevronLeftIcon className="h-4 w-4" />
-                                            Anterior
-                                        </button>
-                                        <button
-                                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                            disabled={currentPage === totalPages}
-                                            className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
-                                        >
-                                            Siguiente
-                                            <ChevronRightIcon className="h-4 w-4" />
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </>
-                    )}
-                </section>
-
-                {isClient && (
-                    <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-                        <article className="rounded-[1.5rem] border border-white/70 bg-white/88 p-6 shadow-[0_18px_50px_rgba(10,37,64,0.08)] backdrop-blur">
-                            <div className="mb-4 flex items-center justify-between gap-3">
-                                <div>
-                                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Compras recientes</p>
-                                    <h3 className="text-lg font-semibold text-slate-900">Historial de productos</h3>
-                                </div>
-                                <ShoppingBagIcon className="h-5 w-5 text-blue-600" />
-                            </div>
-
-                            {historyLoading ? (
-                                <p className="text-sm text-slate-500">Cargando historial...</p>
-                            ) : purchaseHistory.length === 0 ? (
-                                <p className="text-sm text-slate-500">Todavía no has comprado productos.</p>
-                            ) : (
-                                <div className="space-y-3">
-                                    {purchaseHistory.slice(0, 6).map((purchase) => (
-                                        <div key={purchase?._id || purchase?.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div>
-                                                    <p className="font-semibold text-slate-900">{purchase?.description || 'Compra de producto'}</p>
-                                                    <p className="text-xs text-slate-500">Cuenta: {purchase?.accountId || '-'}</p>
-                                                </div>
-                                                <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
-                                                    {moneyFormatter.format(Number(purchase?.amount || 0))}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </article>
-
-                        <article className="rounded-[1.5rem] border border-white/70 bg-white/88 p-6 shadow-[0_18px_50px_rgba(10,37,64,0.08)] backdrop-blur">
-                            <div className="mb-4 flex items-center justify-between gap-3">
-                                <div>
-                                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Cuentas disponibles</p>
-                                    <h3 className="text-lg font-semibold text-slate-900">Cuenta para comprar</h3>
-                                </div>
-                                <CheckCircleIcon className="h-5 w-5 text-emerald-600" />
-                            </div>
-
-                            {activeAccounts.length === 0 ? (
-                                <p className="text-sm text-slate-500">Necesitas una cuenta activa para comprar productos.</p>
-                            ) : (
-                                <div className="space-y-3">
-                                    {activeAccounts.map((account) => (
-                                        <div key={account?._id || account?.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                                            <p className="font-semibold text-slate-900">{account?.accountNumber || 'Cuenta'}</p>
-                                            <p className="text-sm text-slate-500">Saldo: {moneyFormatter.format(Number(account?.balance || 0))}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </article>
-                    </section>
-                )}
-
-                {/* Create/Edit Modal */}
-                {showModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-                        <form onSubmit={handleSubmit} className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
-                            <h3 className="mb-4 text-xl font-semibold text-slate-900">
-                                {editingId ? 'Editar Producto' : 'Crear Producto'}
-                            </h3>
-                            
-                            <div className="mb-4">
-                                <label className="mb-2 block text-sm font-medium text-slate-700">Nombre *</label>
-                                <input
-                                    name="name"
-                                    value={form.name}
-                                    onChange={handleChange}
-                                    required
-                                    maxLength={150}
-                                    className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
-                                    placeholder="Nombre del producto"
-                                />
-                            </div>
-
-                            <div className="mb-4">
-                                <label className="mb-2 block text-sm font-medium text-slate-700">Descripción</label>
-                                <textarea
-                                    name="description"
-                                    value={form.description}
-                                    onChange={handleChange}
-                                    maxLength={500}
-                                    rows={4}
-                                    className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
-                                    placeholder="Descripción del producto"
-                                />
-                            </div>
-
-                            <div className="mb-6">
-                                <label className="mb-2 block text-sm font-medium text-slate-700">Precio *</label>
-                                <div className="relative">
-                                    <span className="absolute left-4 top-2.5 text-slate-500">$</span>
-                                    <input
-                                        name="price"
-                                        value={form.price}
-                                        onChange={handleChange}
-                                        required
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        className="w-full rounded-lg border border-slate-300 bg-white pl-8 pr-4 py-2.5 text-sm placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
-                                        placeholder="0.00"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="flex items-center justify-end gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setShowModal(false);
-                                        setEditingId(null);
-                                    }}
-                                    className="rounded-lg px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={formLoading}
-                                    className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700"
-                                >
-                                    {formLoading ? 'Guardando...' : editingId ? 'Actualizar' : 'Crear'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                )}
-
-                {purchaseOpen && selectedProduct && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-                        <form onSubmit={handlePurchase} className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
-                            <h3 className="mb-2 text-xl font-semibold text-slate-900">Comprar producto</h3>
-                            <p className="mb-5 text-sm text-slate-500">
-                                Confirma la compra de {selectedProduct?.name || 'este producto'} por {moneyFormatter.format(Number(selectedProduct?.price || 0))}.
-                            </p>
-
-                            <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                                <p className="font-semibold text-slate-900">{selectedProduct?.name}</p>
-                                <p className="text-sm text-slate-500">{selectedProduct?.description || 'Sin descripción'}</p>
-                            </div>
-
-                            <div className="mb-6">
-                                <label className="mb-2 block text-sm font-medium text-slate-700">Cuenta activa *</label>
-                                <select
-                                    value={selectedAccountId}
-                                    onChange={(event) => setSelectedAccountId(event.target.value)}
-                                    required
-                                    className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
-                                >
-                                    <option value="">Selecciona una cuenta</option>
-                                    {activeAccounts.map((account) => (
-                                        <option key={account?._id || account?.id} value={account?._id || account?.id}>
-                                            {account?.accountNumber || account?._id} - {moneyFormatter.format(Number(account?.balance || 0))}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="flex items-center justify-end gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setPurchaseOpen(false);
-                                        setSelectedProduct(null);
-                                    }}
-                                    className="rounded-lg px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={purchaseLoading}
-                                    className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700"
-                                >
-                                    {purchaseLoading ? 'Comprando...' : 'Confirmar compra'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                )}
-
-
+          <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: '7px',
+                borderRadius: '20px', border: '1px solid rgba(255,255,255,0.12)',
+                background: 'rgba(255,255,255,0.07)',
+                padding: '4px 14px', marginBottom: '12px',
+                fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.22em',
+                textTransform: 'uppercase', color: 'rgba(232,240,254,0.7)',
+              }}>
+                <TagIcon style={{ width: '12px', height: '12px' }} />
+                Catálogo Financiero
+              </div>
+              <h1 style={{
+                fontFamily: '"DM Serif Display", Georgia, serif',
+                fontSize: 'clamp(1.8rem,4vw,2.8rem)',
+                fontWeight: 400, color: '#e8f0fe',
+                letterSpacing: '-0.02em', lineHeight: 1.15, marginBottom: '10px',
+              }}>
+                {isAdmin ? 'Productos Bancarios' : 'Catálogo de Productos'}
+              </h1>
+              <p style={{ fontSize: '0.875rem', color: 'rgba(232,240,254,0.5)', maxWidth: '500px', lineHeight: 1.7 }}>
+                {isAdmin
+                  ? 'Gestión de carteras, préstamos y cuentas especiales. Define la oferta comercial del banco.'
+                  : 'Explora la oferta activa y compra productos desde una de tus cuentas.'}
+              </p>
             </div>
-        </div>
-    );
+            {/* Botón Crear / badge — onClick original intacto */}
+            {isAdmin ? (
+              <button
+                onClick={openCreateModal}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '8px',
+                  padding: '11px 22px', borderRadius: '12px',
+                  background: 'rgba(79,142,247,0.18)',
+                  border: '1px solid rgba(79,142,247,0.4)',
+                  color: '#a5c8ff', fontSize: '0.875rem', fontWeight: 600,
+                  cursor: 'pointer', backdropFilter: 'blur(10px)',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 4px 20px rgba(79,142,247,0.18)',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(79,142,247,0.28)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(79,142,247,0.18)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+              >
+                <PlusIcon style={{ width: '15px', height: '15px' }} />
+                Crear Producto
+              </button>
+            ) : (
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                padding: '11px 20px', borderRadius: '12px',
+                background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
+                color: 'rgba(232,240,254,0.7)', fontSize: '0.875rem', fontWeight: 600,
+              }}>
+                <ShoppingBagIcon style={{ width: '15px', height: '15px' }} />
+                Solo productos activos
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ══ Stat Cards ══ */}
+        <section style={{ display: 'grid', gap: '14px', gridTemplateColumns: 'repeat(auto-fill, minmax(200px,1fr))' }}>
+          {[
+            { label: 'Total de Productos', value: products.length,                                                         icon: BuildingStorefrontIcon, grad: 'linear-gradient(135deg,#4f8ef7,#2563eb)',  glow: 'rgba(79,142,247,0.35)' },
+            { label: 'Precio Promedio',    value: products.length > 0 ? `Q ${(products.reduce((s,p) => s + (Number(p.price)||0), 0) / products.length).toFixed(2)}` : 'Q 0', icon: CurrencyDollarIcon, grad: 'linear-gradient(135deg,#00d4a0,#059669)', glow: 'rgba(0,212,160,0.35)' },
+            { label: 'Activos',            value: products.filter(p => p.isActive).length,                                 icon: ShieldCheckIcon,        grad: 'linear-gradient(135deg,#a78bfa,#7c3aed)', glow: 'rgba(167,139,250,0.35)' },
+            { label: 'Inactivos',          value: products.filter(p => !p.isActive).length,                                icon: TagIcon,                grad: 'linear-gradient(135deg,#fbbf24,#d97706)', glow: 'rgba(251,191,36,0.3)' },
+          ].map(({ label, value, icon: Icon, grad, glow }) => (
+            <article key={label} style={{
+              position: 'relative', overflow: 'hidden', borderRadius: '14px', padding: '18px 20px',
+              background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+              border: '1px solid rgba(255,255,255,0.09)',
+              boxShadow: '0 6px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)',
+              transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+            }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = `0 16px 40px rgba(0,0,0,0.45), 0 0 20px ${glow}`; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)'; }}
+            >
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: grad }} />
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
+                <div>
+                  <p style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(232,240,254,0.4)', marginBottom: '6px' }}>{label}</p>
+                  <p style={{ fontSize: '1.6rem', fontWeight: 700, color: '#e8f0fe', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{value}</p>
+                </div>
+                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: grad, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `0 4px 16px ${glow}` }}>
+                  <Icon style={{ width: '18px', height: '18px', color: '#fff' }} />
+                </div>
+              </div>
+            </article>
+          ))}
+        </section>
+
+        {/* ══ Barra de búsqueda / filtros ══ */}
+        <section style={{ ...glassPanel, padding: '16px 20px' }}>
+          <div style={{ position: 'relative', marginBottom: isAdmin ? '14px' : 0 }}>
+            <MagnifyingGlassIcon style={{ position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)', width: '16px', height: '16px', color: 'rgba(232,240,254,0.35)', pointerEvents: 'none' }} />
+            <input
+              type="text"
+              placeholder="Buscar por nombre o descripción..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                width: '100%', padding: '10px 14px 10px 40px',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '10px',
+                fontFamily: 'inherit', fontSize: '0.875rem', color: '#e8f0fe',
+                outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s',
+              }}
+              onFocus={e => { e.target.style.borderColor = 'rgba(79,142,247,0.55)'; e.target.style.boxShadow = '0 0 0 3px rgba(79,142,247,0.1)'; }}
+              onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.1)'; e.target.style.boxShadow = 'none'; }}
+            />
+          </div>
+
+          {/* Filtro de estado — solo admin, onClick originales intactos */}
+          {isAdmin && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '0.78rem', color: 'rgba(232,240,254,0.4)' }}>Mostrar:</span>
+              <div style={{ display: 'inline-flex', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+                {['all', 'active', 'inactive'].map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setStatusFilter(f)}
+                    style={{
+                      padding: '6px 14px', fontSize: '0.78rem', fontWeight: 500,
+                      border: 'none', cursor: 'pointer', transition: 'all 0.15s',
+                      background: statusFilter === f ? 'rgba(79,142,247,0.28)' : 'rgba(255,255,255,0.04)',
+                      color: statusFilter === f ? '#a5c8ff' : 'rgba(232,240,254,0.45)',
+                      borderRight: f !== 'inactive' ? '1px solid rgba(255,255,255,0.08)' : 'none',
+                    }}
+                  >
+                    {f === 'all' ? 'Todos' : f === 'active' ? 'Activos' : 'Inactivos'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* ══ Tabla de productos ══ */}
+        <section style={{ ...glassPanel }}>
+          {loading ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px 24px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
+                <span style={{ width: '28px', height: '28px', border: '2px solid rgba(79,142,247,0.25)', borderTopColor: '#4f8ef7', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} />
+                <p style={{ color: 'rgba(232,240,254,0.4)', fontSize: '0.875rem' }}>Cargando productos...</p>
+              </div>
+            </div>
+          ) : paginatedProducts.length === 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '72px 24px' }}>
+              <BuildingStorefrontIcon style={{ width: '40px', height: '40px', color: 'rgba(232,240,254,0.15)', marginBottom: '14px' }} />
+              <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#e8f0fe', marginBottom: '6px' }}>
+                {searchTerm ? 'No se encontraron productos' : 'Sin productos'}
+              </h3>
+              <p style={{ color: 'rgba(232,240,254,0.38)', fontSize: '0.875rem' }}>
+                {searchTerm ? 'Intenta con otros términos de búsqueda' : 'Crea tu primer producto para comenzar'}
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Header fijo */}
+              <div style={{ padding: '0 24px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      {['Nombre', 'Descripción', 'Precio', 'Estado', 'Acciones'].map((h, i) => (
+                        <th key={i} style={{
+                          padding: '14px 0',
+                          textAlign: i === 2 ? 'right' : i === 3 || i === 4 ? 'center' : 'left',
+                          fontSize: '0.65rem', fontWeight: 700,
+                          letterSpacing: '0.14em', textTransform: 'uppercase',
+                          color: 'rgba(232,240,254,0.35)',
+                        }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                </table>
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <tbody>
+                    {paginatedProducts.map((product, idx) => {
+                      const productId = product?._id || product?.id || `product-${idx}`;
+                      return (
+                        <tr
+                          key={productId}
+                          style={{
+                            borderBottom: idx < paginatedProducts.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                            transition: 'background 0.15s ease',
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          {/* Nombre */}
+                          <td style={{ padding: '15px 24px', verticalAlign: 'middle', fontWeight: 500, color: '#e8f0fe', fontSize: '0.875rem' }}>
+                            {product?.name || 'Sin nombre'}
+                          </td>
+                          {/* Descripción */}
+                          <td style={{ padding: '15px 24px', verticalAlign: 'middle', color: 'rgba(232,240,254,0.45)', fontSize: '0.845rem', maxWidth: '240px' }}>
+                            <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {product?.description || '-'}
+                            </span>
+                          </td>
+                          {/* Precio */}
+                          <td style={{ padding: '15px 24px', verticalAlign: 'middle', textAlign: 'right', fontWeight: 600, color: '#e8f0fe', fontSize: '0.875rem' }}>
+                            Q {(Number(product?.price) || 0).toFixed(2)}
+                          </td>
+                          {/* Estado / Comprar — onClick original intacto */}
+                          <td style={{ padding: '15px 24px', verticalAlign: 'middle', textAlign: 'center' }}>
+                            <button
+                              onClick={() => isAdmin ? handleToggleActive(productId, product?.isActive) : openPurchaseModal(product)}
+                              disabled={!isAdmin && !product?.isActive}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '5px',
+                                padding: '4px 12px', borderRadius: '20px',
+                                fontSize: '0.68rem', fontWeight: 700,
+                                textTransform: 'uppercase', letterSpacing: '0.06em',
+                                border: 'none', cursor: (!isAdmin && !product?.isActive) ? 'not-allowed' : 'pointer',
+                                transition: 'all 0.15s',
+                                ...(isAdmin
+                                  ? (product?.isActive
+                                    ? { background: 'rgba(0,212,160,0.12)', border: '1px solid rgba(0,212,160,0.3)', color: '#00d4a0' }
+                                    : { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(232,240,254,0.4)' })
+                                  : (product?.isActive
+                                    ? { background: 'rgba(79,142,247,0.12)', border: '1px solid rgba(79,142,247,0.3)', color: '#a5c8ff' }
+                                    : { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(232,240,254,0.25)' })
+                                ),
+                              }}
+                            >
+                              {isAdmin ? (
+                                product?.isActive
+                                  ? <><CheckIcon style={{ width: '12px', height: '12px' }} /> Activo</>
+                                  : <><XMarkIcon style={{ width: '12px', height: '12px' }} /> Inactivo</>
+                              ) : (
+                                <><ShoppingBagIcon style={{ width: '12px', height: '12px' }} /> Comprar</>
+                              )}
+                            </button>
+                          </td>
+                          {/* Acciones — onClick original intacto */}
+                          <td style={{ padding: '15px 24px', verticalAlign: 'middle', textAlign: 'center' }}>
+                            {isAdmin ? (
+                              <button
+                                onClick={() => openEditModal(product)}
+                                title="Editar"
+                                style={{
+                                  width: '32px', height: '32px', borderRadius: '8px',
+                                  background: 'rgba(79,142,247,0.1)', border: '1px solid rgba(79,142,247,0.25)',
+                                  color: '#a5c8ff', cursor: 'pointer',
+                                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                  transition: 'all 0.15s',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(79,142,247,0.22)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(79,142,247,0.1)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                              >
+                                <PencilIcon style={{ width: '14px', height: '14px' }} />
+                              </button>
+                            ) : (
+                              <span style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '5px',
+                                padding: '4px 10px', borderRadius: '20px',
+                                fontSize: '0.68rem', fontWeight: 600,
+                                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                                color: 'rgba(232,240,254,0.4)',
+                              }}>
+                                <CheckCircleIcon style={{ width: '12px', height: '12px' }} />
+                                {product?.isActive ? 'Disponible' : 'No disponible'}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Paginación — onClick originales intactos */}
+              {totalPages > 1 && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '14px 24px', borderTop: '1px solid rgba(255,255,255,0.07)',
+                  flexWrap: 'wrap', gap: '10px',
+                }}>
+                  <span style={{ fontSize: '0.78rem', color: 'rgba(232,240,254,0.35)' }}>
+                    Página <strong style={{ color: '#e8f0fe' }}>{currentPage}</strong> de <strong style={{ color: '#e8f0fe' }}>{totalPages}</strong> — {filteredProducts.length} resultados
+                  </span>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {[
+                      { label: 'Anterior', icon: ChevronLeftIcon, onClick: () => setCurrentPage(p => Math.max(1, p - 1)), disabled: currentPage === 1 },
+                      { label: 'Siguiente', icon: ChevronRightIcon, onClick: () => setCurrentPage(p => Math.min(totalPages, p + 1)), disabled: currentPage === totalPages },
+                    ].map(({ label, icon: Icon, onClick, disabled }) => (
+                      <button
+                        key={label}
+                        onClick={onClick}
+                        disabled={disabled}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '5px',
+                          padding: '7px 13px', borderRadius: '8px',
+                          background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                          color: 'rgba(232,240,254,0.6)', fontSize: '0.78rem', fontWeight: 500,
+                          cursor: 'pointer', transition: 'all 0.15s',
+                          opacity: disabled ? 0.35 : 1,
+                        }}
+                        onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = 'rgba(79,142,247,0.12)'; }}
+                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                      >
+                        {label === 'Anterior' && <Icon style={{ width: '14px', height: '14px' }} />}
+                        {label}
+                        {label === 'Siguiente' && <Icon style={{ width: '14px', height: '14px' }} />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </section>
+
+        {/* ══ Panel de cliente: historial + cuentas ══ */}
+        {isClient && (
+          <section style={{ display: 'grid', gap: '20px', gridTemplateColumns: '1.15fr 0.85fr' }}>
+            {/* Historial — lógica original intacta */}
+            <div style={{ ...glassPanel, padding: '24px 28px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
+                <div>
+                  <p style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(232,240,254,0.38)', marginBottom: '4px' }}>Compras recientes</p>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#e8f0fe' }}>Historial de productos</h3>
+                </div>
+                <ShoppingBagIcon style={{ width: '20px', height: '20px', color: '#4f8ef7' }} />
+              </div>
+              {historyLoading ? (
+                <p style={{ color: 'rgba(232,240,254,0.38)', fontSize: '0.875rem' }}>Cargando historial...</p>
+              ) : purchaseHistory.length === 0 ? (
+                <p style={{ color: 'rgba(232,240,254,0.35)', fontSize: '0.875rem' }}>Todavía no has comprado productos.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {purchaseHistory.slice(0, 6).map((purchase) => (
+                    <div key={purchase?._id || purchase?.id} style={{
+                      borderRadius: '12px', padding: '14px 16px',
+                      background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
+                        <div>
+                          <p style={{ fontWeight: 500, color: '#e8f0fe', fontSize: '0.875rem', marginBottom: '2px' }}>{purchase?.description || 'Compra de producto'}</p>
+                          <p style={{ fontSize: '0.72rem', color: 'rgba(232,240,254,0.35)' }}>Cuenta: {purchase?.accountId || '-'}</p>
+                        </div>
+                        <span style={{
+                          padding: '3px 10px', borderRadius: '20px',
+                          background: 'rgba(79,142,247,0.12)', border: '1px solid rgba(79,142,247,0.25)',
+                          color: '#a5c8ff', fontSize: '0.68rem', fontWeight: 700, whiteSpace: 'nowrap',
+                        }}>
+                          {moneyFormatter.format(Number(purchase?.amount || 0))}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Cuentas disponibles — lógica original intacta */}
+            <div style={{ ...glassPanel, padding: '24px 28px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
+                <div>
+                  <p style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(232,240,254,0.38)', marginBottom: '4px' }}>Cuentas disponibles</p>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#e8f0fe' }}>Cuenta para comprar</h3>
+                </div>
+                <CheckCircleIcon style={{ width: '20px', height: '20px', color: '#00d4a0' }} />
+              </div>
+              {activeAccounts.length === 0 ? (
+                <p style={{ color: 'rgba(232,240,254,0.35)', fontSize: '0.875rem' }}>Necesitas una cuenta activa para comprar productos.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {activeAccounts.map((account) => (
+                    <div key={account?._id || account?.id} style={{
+                      borderRadius: '12px', padding: '14px 16px',
+                      background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                    }}>
+                      <p style={{ fontWeight: 500, color: '#e8f0fe', fontSize: '0.875rem', marginBottom: '2px' }}>{account?.accountNumber || 'Cuenta'}</p>
+                      <p style={{ fontSize: '0.78rem', color: 'rgba(232,240,254,0.45)' }}>Saldo: {moneyFormatter.format(Number(account?.balance || 0))}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* ══ Modal Crear / Editar — handleSubmit original intacto ══ */}
+        {showModal && (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 50,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)',
+            padding: '16px', animation: 'fadeIn 0.15s ease',
+          }}>
+            <form
+              onSubmit={handleSubmit}
+              style={{
+                width: '100%', maxWidth: '500px',
+                borderRadius: '18px',
+                background: 'rgba(10,18,35,0.95)',
+                backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+                border: '1px solid rgba(79,142,247,0.2)',
+                boxShadow: '0 24px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)',
+                overflow: 'hidden',
+                animation: 'fadeUp 0.2s cubic-bezier(0.22,1,0.36,1) both',
+              }}
+            >
+              {/* Header modal */}
+              <div style={{
+                padding: '22px 24px', borderBottom: '1px solid rgba(255,255,255,0.07)',
+                background: 'linear-gradient(135deg, rgba(10,37,64,0.9) 0%, rgba(26,75,140,0.5) 100%)',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              }}>
+                <div>
+                  <p style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(79,142,247,0.8)', marginBottom: '4px' }}>
+                    {editingId ? 'Editar' : 'Nuevo'}
+                  </p>
+                  <h3 style={{ fontFamily: '"DM Serif Display", Georgia, serif', fontSize: '1.25rem', fontWeight: 400, color: '#e8f0fe' }}>
+                    {editingId ? 'Editar Producto' : 'Crear Producto'}
+                  </h3>
+                </div>
+                <button type="button" onClick={() => { setShowModal(false); setEditingId(null); }} style={{ width: '30px', height: '30px', borderRadius: '7px', border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', color: 'rgba(232,240,254,0.6)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <XMarkIcon style={{ width: '14px', height: '14px' }} />
+                </button>
+              </div>
+
+              {/* Body modal */}
+              <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {/* Nombre */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '0.68rem', fontWeight: 600, color: 'rgba(232,240,254,0.45)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Nombre *</label>
+                  <input
+                    name="name" value={form.name} onChange={handleChange}
+                    required maxLength={150} placeholder="Nombre del producto"
+                    style={{ padding: '10px 13px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', fontFamily: 'inherit', fontSize: '0.875rem', color: '#e8f0fe', outline: 'none' }}
+                    onFocus={e => { e.target.style.borderColor = 'rgba(79,142,247,0.55)'; e.target.style.boxShadow = '0 0 0 3px rgba(79,142,247,0.1)'; }}
+                    onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.1)'; e.target.style.boxShadow = 'none'; }}
+                  />
+                </div>
+                {/* Descripción */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '0.68rem', fontWeight: 600, color: 'rgba(232,240,254,0.45)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Descripción</label>
+                  <textarea
+                    name="description" value={form.description} onChange={handleChange}
+                    maxLength={500} rows={3} placeholder="Descripción del producto"
+                    style={{ padding: '10px 13px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', fontFamily: 'inherit', fontSize: '0.875rem', color: '#e8f0fe', outline: 'none', resize: 'vertical' }}
+                    onFocus={e => { e.target.style.borderColor = 'rgba(79,142,247,0.55)'; e.target.style.boxShadow = '0 0 0 3px rgba(79,142,247,0.1)'; }}
+                    onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.1)'; e.target.style.boxShadow = 'none'; }}
+                  />
+                </div>
+                {/* Precio */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '0.68rem', fontWeight: 600, color: 'rgba(232,240,254,0.45)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Precio *</label>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(232,240,254,0.4)', fontSize: '0.875rem' }}>Q</span>
+                    <input
+                      name="price" value={form.price} onChange={handleChange}
+                      required type="number" min="0" step="0.01" placeholder="0.00"
+                      style={{ width: '100%', padding: '10px 13px 10px 28px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', fontFamily: 'inherit', fontSize: '0.875rem', color: '#e8f0fe', outline: 'none' }}
+                      onFocus={e => { e.target.style.borderColor = 'rgba(79,142,247,0.55)'; e.target.style.boxShadow = '0 0 0 3px rgba(79,142,247,0.1)'; }}
+                      onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.1)'; e.target.style.boxShadow = 'none'; }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer modal */}
+              <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.07)', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button type="button" onClick={() => { setShowModal(false); setEditingId(null); }} style={{ padding: '9px 18px', borderRadius: '9px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(232,240,254,0.6)', fontSize: '0.845rem', fontWeight: 500, cursor: 'pointer' }}>
+                  Cancelar
+                </button>
+                <button type="submit" disabled={formLoading} style={{ padding: '9px 22px', borderRadius: '9px', background: 'rgba(79,142,247,0.18)', border: '1px solid rgba(79,142,247,0.35)', color: '#a5c8ff', fontSize: '0.845rem', fontWeight: 600, cursor: 'pointer', opacity: formLoading ? 0.6 : 1 }}>
+                  {formLoading ? 'Guardando...' : editingId ? 'Actualizar' : 'Crear'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* ══ Modal de compra — handlePurchase original intacto ══ */}
+        {purchaseOpen && selectedProduct && (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 50,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)',
+            padding: '16px', animation: 'fadeIn 0.15s ease',
+          }}>
+            <form
+              onSubmit={handlePurchase}
+              style={{
+                width: '100%', maxWidth: '480px',
+                borderRadius: '18px',
+                background: 'rgba(10,18,35,0.95)',
+                backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+                border: '1px solid rgba(0,212,160,0.2)',
+                boxShadow: '0 24px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)',
+                overflow: 'hidden',
+                animation: 'fadeUp 0.2s cubic-bezier(0.22,1,0.36,1) both',
+              }}
+            >
+              {/* Header */}
+              <div style={{
+                padding: '22px 24px', borderBottom: '1px solid rgba(255,255,255,0.07)',
+                background: 'linear-gradient(135deg, rgba(0,100,70,0.4) 0%, rgba(10,18,35,0.9) 100%)',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              }}>
+                <div>
+                  <p style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(0,212,160,0.8)', marginBottom: '4px' }}>Confirmar</p>
+                  <h3 style={{ fontFamily: '"DM Serif Display", Georgia, serif', fontSize: '1.25rem', fontWeight: 400, color: '#e8f0fe' }}>Comprar producto</h3>
+                </div>
+                <button type="button" onClick={() => { setPurchaseOpen(false); setSelectedProduct(null); }} style={{ width: '30px', height: '30px', borderRadius: '7px', border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', color: 'rgba(232,240,254,0.6)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <XMarkIcon style={{ width: '14px', height: '14px' }} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <p style={{ fontSize: '0.875rem', color: 'rgba(232,240,254,0.5)', lineHeight: 1.6 }}>
+                  Confirma la compra de <strong style={{ color: '#e8f0fe' }}>{selectedProduct?.name}</strong> por <strong style={{ color: '#00d4a0' }}>{moneyFormatter.format(Number(selectedProduct?.price || 0))}</strong>.
+                </p>
+                {/* Producto seleccionado */}
+                <div style={{ borderRadius: '12px', padding: '14px 16px', background: 'rgba(0,212,160,0.06)', border: '1px solid rgba(0,212,160,0.15)' }}>
+                  <p style={{ fontWeight: 600, color: '#e8f0fe', fontSize: '0.875rem', marginBottom: '3px' }}>{selectedProduct?.name}</p>
+                  <p style={{ fontSize: '0.78rem', color: 'rgba(232,240,254,0.45)' }}>{selectedProduct?.description || 'Sin descripción'}</p>
+                </div>
+                {/* Selector de cuenta */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '0.68rem', fontWeight: 600, color: 'rgba(232,240,254,0.45)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Cuenta activa *</label>
+                  <select
+                    value={selectedAccountId}
+                    onChange={(event) => setSelectedAccountId(event.target.value)}
+                    required
+                    style={{
+                      padding: '10px 32px 10px 13px',
+                      background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '10px', fontFamily: 'inherit', fontSize: '0.875rem', color: '#e8f0fe',
+                      outline: 'none', cursor: 'pointer', appearance: 'none',
+                      backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(232,240,254,0.4)' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")",
+                      backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center',
+                    }}
+                  >
+                    <option value="" style={{ background: '#0a2540' }}>Selecciona una cuenta</option>
+                    {activeAccounts.map((account) => (
+                      <option key={account?._id || account?.id} value={account?._id || account?.id} style={{ background: '#0a2540' }}>
+                        {account?.accountNumber || account?._id} — {moneyFormatter.format(Number(account?.balance || 0))}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.07)', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button type="button" onClick={() => { setPurchaseOpen(false); setSelectedProduct(null); }} style={{ padding: '9px 18px', borderRadius: '9px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(232,240,254,0.6)', fontSize: '0.845rem', fontWeight: 500, cursor: 'pointer' }}>
+                  Cancelar
+                </button>
+                <button type="submit" disabled={purchaseLoading} style={{ padding: '9px 22px', borderRadius: '9px', background: 'rgba(0,212,160,0.15)', border: '1px solid rgba(0,212,160,0.35)', color: '#00d4a0', fontSize: '0.845rem', fontWeight: 600, cursor: 'pointer', opacity: purchaseLoading ? 0.6 : 1 }}>
+                  {purchaseLoading ? 'Comprando...' : 'Confirmar compra'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
 };

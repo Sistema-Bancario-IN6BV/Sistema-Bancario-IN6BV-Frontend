@@ -1,3 +1,4 @@
+//AvatarUser.jsx
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuthStore } from "../../../features/auth/store/authStore";
