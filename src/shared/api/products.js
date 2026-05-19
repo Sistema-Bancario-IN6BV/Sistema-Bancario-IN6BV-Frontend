@@ -27,3 +27,11 @@ export const activateProduct = async (id) => {
 export const deactivateProduct = async (id) => {
 	return axiosAdmin.put(`/products/deactivate/${id}`);
 };
+
+export const purchaseProduct = async (payload) => {
+	return axiosAdmin.post('/products/purchase', payload);
+};
+
+export const getPurchasedProductsByAccount = async (accountId) => {
+	return axiosAdmin.get(`/products/purchase/${accountId}`);
+};

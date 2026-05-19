@@ -1,12 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  getProducts, 
-  createProduct, 
-  updateProduct, 
-  activateProduct,
-  deactivateProduct 
+import { useAuthStore } from '../../auth/store/authStore';
+import { useAccountStore } from '../../accounts/store/useAccountStore';
+import {
+    getProducts,
+    createProduct,
+    updateProduct,
+    activateProduct,
+    deactivateProduct,
+    purchaseProduct,
+    getPurchasedProductsByAccount,
 } from '../../../shared/api/products';
 import { showSuccess, showError } from '../../../shared/utils/toast';
+import { normalizeRole } from '../../../shared/utils/authRole';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
@@ -15,16 +20,18 @@ import {
   CurrencyDollarIcon,
   ShieldCheckIcon,
   PencilIcon,
+    ShoppingBagIcon,
+    CheckCircleIcon,
 
   ChevronLeftIcon,
   ChevronRightIcon,
-  EyeIcon,
-  EyeSlashIcon,
   XMarkIcon,
   CheckIcon
 } from "@heroicons/react/24/outline";
 
 export const Products = () => {
+    const { user } = useAuthStore();
+    const { accounts = [], getAccounts } = useAccountStore();
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -34,12 +41,79 @@ export const Products = () => {
     const [editingId, setEditingId] = useState(null);
     const [form, setForm] = useState({ name: '', description: '', price: '' });
     const [formLoading, setFormLoading] = useState(false);
+    const [purchaseOpen, setPurchaseOpen] = useState(false);
+    const [selectedProduct, setSelectedProduct] = useState(null);
+    const [selectedAccountId, setSelectedAccountId] = useState('');
+    const [purchaseLoading, setPurchaseLoading] = useState(false);
+    const [purchaseHistory, setPurchaseHistory] = useState([]);
+    const [historyLoading, setHistoryLoading] = useState(false);
     const itemsPerPage = 10;
+    const normalizedRole = normalizeRole(user?.role);
+    const isAdmin = normalizedRole === 'ADMIN_ROLE';
+    const isClient = normalizedRole === 'USER_ROLE';
+    const activeAccounts = useMemo(
+        () => accounts.filter((account) => account?.status === 'ACTIVE'),
+        [accounts]
+    );
+
+    const moneyFormatter = useMemo(
+        () => new Intl.NumberFormat('es-GT', { style: 'currency', currency: 'GTQ', minimumFractionDigits: 2 }),
+        []
+    );
 
     // Fetch products on mount
     useEffect(() => {
         fetchProducts();
     }, []);
+
+    useEffect(() => {
+        if (!isClient) {
+            return;
+        }
+
+        const loadClientContext = async () => {
+            try {
+                const loadedAccounts = await getAccounts();
+                const accountList = Array.isArray(loadedAccounts) ? loadedAccounts : [];
+                const accountIds = accountList.map((a) => a?._id || a?.id).filter(Boolean);
+
+                if (accountIds.length === 0) {
+                    setPurchaseHistory([]);
+                    return;
+                }
+
+                const results = await Promise.allSettled(
+                    accountIds.map((accountId) => getPurchasedProductsByAccount(accountId))
+                );
+
+                const mergedHistory = results.flatMap((result, index) => {
+                    if (result.status !== 'fulfilled') return [];
+                    const accountId = accountIds[index];
+                    const data = result.value?.data?.purchases ?? result.value?.data ?? [];
+                    const purchases = Array.isArray(data) ? data : [];
+                    return purchases.map((purchase) => ({ ...purchase, accountId }));
+                });
+
+                mergedHistory.sort((left, right) => new Date(right?.createdAt || right?.date || 0) - new Date(left?.createdAt || left?.date || 0));
+                setPurchaseHistory(mergedHistory);
+            } catch (error) {
+                 
+                console.warn('No se pudo cargar el contexto de compras:', error);
+            }
+        };
+
+        loadClientContext().catch((err) => {
+             
+            console.warn('loadClientContext failed:', err);
+        });
+         
+    }, [isClient, getAccounts]);
+
+    useEffect(() => {
+        if (!isAdmin) {
+            setStatusFilter('active');
+        }
+    }, [isAdmin]);
 
     const fetchProducts = async () => {
         setLoading(true);
@@ -60,11 +134,13 @@ export const Products = () => {
             // Normalize isActive to boolean in case backend returns strings/numbers
             const normalized = finalProducts.map(p => {
                 const raw = p?.isActive;
-                let isActiveBool = false;
-                if (typeof raw === 'boolean') isActiveBool = raw;
-                else if (typeof raw === 'string') isActiveBool = raw === 'true' || raw === '1';
-                else if (typeof raw === 'number') isActiveBool = raw === 1;
-                else isActiveBool = !!raw;
+                const isActiveBool = typeof raw === 'boolean'
+                    ? raw
+                    : typeof raw === 'string'
+                        ? raw === 'true' || raw === '1'
+                        : typeof raw === 'number'
+                            ? raw === 1
+                            : !!raw;
 
                 return { ...p, isActive: isActiveBool };
             });
@@ -80,6 +156,50 @@ export const Products = () => {
         }
     };
 
+    const fetchPurchaseHistory = async (accountList = accounts) => {
+        if (!isClient) {
+            setPurchaseHistory([]);
+            return;
+        }
+
+        const accountIds = (accountList || []).map((account) => account?._id || account?.id).filter(Boolean);
+
+        if (accountIds.length === 0) {
+            setPurchaseHistory([]);
+            return;
+        }
+
+        setHistoryLoading(true);
+        try {
+            const results = await Promise.allSettled(
+                accountIds.map((accountId) => getPurchasedProductsByAccount(accountId))
+            );
+
+            const mergedHistory = results.flatMap((result, index) => {
+                if (result.status !== 'fulfilled') {
+                    return [];
+                }
+
+                const accountId = accountIds[index];
+                const data = result.value?.data?.purchases ?? result.value?.data ?? [];
+                const purchases = Array.isArray(data) ? data : [];
+
+                return purchases.map((purchase) => ({
+                    ...purchase,
+                    accountId,
+                }));
+            });
+
+            mergedHistory.sort((left, right) => new Date(right?.createdAt || right?.date || 0) - new Date(left?.createdAt || left?.date || 0));
+            setPurchaseHistory(mergedHistory);
+        } catch (error) {
+            console.warn('No se pudo cargar el historial de compras:', error);
+            setPurchaseHistory([]);
+        } finally {
+            setHistoryLoading(false);
+        }
+    };
+
     // Filter and paginate (supports statusFilter: 'all' | 'active' | 'inactive')
     const filteredProducts = useMemo(() => {
         if (!Array.isArray(products)) return [];
@@ -87,6 +207,10 @@ export const Products = () => {
 
         // start from all products, then apply status filter
         let result = products.slice();
+
+        if (!isAdmin) {
+            result = result.filter(p => p?.isActive);
+        }
 
         if (statusFilter === 'active') {
             result = result.filter(p => p?.isActive);
@@ -101,7 +225,7 @@ export const Products = () => {
             const description = (p?.description || '').toLowerCase();
             return name.includes(search) || description.includes(search);
         });
-    }, [products, searchTerm, statusFilter]);
+    }, [products, searchTerm, statusFilter, isAdmin]);
 
     const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
     const paginatedProducts = useMemo(() => {
@@ -137,6 +261,13 @@ export const Products = () => {
         setShowModal(true);
     };
 
+    const openPurchaseModal = (product) => {
+        const defaultAccount = activeAccounts[0];
+        setSelectedProduct(product);
+        setSelectedAccountId(defaultAccount?._id || defaultAccount?.id || '');
+        setPurchaseOpen(true);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setFormLoading(true);
@@ -162,6 +293,42 @@ export const Products = () => {
         }
     };
 
+    const handlePurchase = async (e) => {
+        e.preventDefault();
+
+        if (!selectedProduct) {
+            showError('Selecciona un producto');
+            return;
+        }
+
+        if (!selectedAccountId) {
+            showError('Selecciona una cuenta activa');
+            return;
+        }
+
+        setPurchaseLoading(true);
+        try {
+            const response = await purchaseProduct({
+                productId: selectedProduct._id || selectedProduct.id,
+                accountId: selectedAccountId,
+            });
+
+            if (response?.data?.success === false) {
+                showError(response?.data?.message || 'No se pudo completar la compra');
+                return;
+            }
+
+            showSuccess('Producto comprado correctamente');
+            setPurchaseOpen(false);
+            setSelectedProduct(null);
+            await Promise.all([fetchProducts(), getAccounts(), fetchPurchaseHistory()]);
+        } catch (error) {
+            showError(error?.response?.data?.message || error.message || 'Error al comprar producto');
+        } finally {
+            setPurchaseLoading(false);
+        }
+    };
+
 
 
     const handleToggleActive = async (productId, isCurrentlyActive) => {
@@ -174,7 +341,8 @@ export const Products = () => {
                 showSuccess('Producto activado');
             }
             fetchProducts();
-        } catch (err) {
+        } catch (error) {
+            console.warn('No se pudo cambiar el estado del producto:', error);
             showError('Error al cambiar estado del producto');
         }
     };
@@ -194,21 +362,30 @@ export const Products = () => {
                             </div>
                             <div className="space-y-2">
                                 <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-5xl">
-                                    Productos Bancarios
+                                    {isAdmin ? 'Productos Bancarios' : 'Catálogo de Productos'}
                                 </h1>
                                 <p className="max-w-2xl text-sm leading-6 text-white/72 sm:text-base">
-                                    Gestión de carteras, préstamos y cuentas especiales. Define la oferta comercial del banco.
+                                    {isAdmin
+                                        ? 'Gestión de carteras, préstamos y cuentas especiales. Define la oferta comercial del banco.'
+                                        : 'Explora la oferta activa y compra productos desde una de tus cuentas.'}
                                 </p>
                             </div>
                         </div>
                         <div className="flex flex-wrap gap-3 xl:justify-end">
-                            <button
-                                onClick={openCreateModal}
-                                className="inline-flex items-center gap-2 rounded-full bg-[#0f7bdf] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#0f7bdf]/30 transition hover:-translate-y-0.5 hover:bg-[#0c67bc]"
-                            >
-                                <PlusIcon className="h-4 w-4" />
-                                Crear Producto
-                            </button>
+                            {isAdmin ? (
+                                <button
+                                    onClick={openCreateModal}
+                                    className="inline-flex items-center gap-2 rounded-full bg-[#0f7bdf] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#0f7bdf]/30 transition hover:-translate-y-0.5 hover:bg-[#0c67bc]"
+                                >
+                                    <PlusIcon className="h-4 w-4" />
+                                    Crear Producto
+                                </button>
+                            ) : (
+                                <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-5 py-3 text-sm font-semibold text-white/90 backdrop-blur">
+                                    <ShoppingBagIcon className="h-4 w-4" />
+                                    Solo productos activos
+                                </div>
+                            )}
                         </div>
                     </div>
                 </section>
@@ -251,32 +428,34 @@ export const Products = () => {
                         />
                     </div>
 
-                    <div className="mt-3 flex items-center gap-3">
-                        <span className="text-sm text-slate-600">Mostrar:</span>
-                        <div className="inline-flex rounded-md overflow-hidden border border-slate-200">
-                            <button
-                                type="button"
-                                onClick={() => setStatusFilter('all')}
-                                className={`px-3 py-1 text-sm ${statusFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
-                            >
-                                Todos
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setStatusFilter('active')}
-                                className={`px-3 py-1 text-sm ${statusFilter === 'active' ? 'bg-blue-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
-                            >
-                                Activos
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setStatusFilter('inactive')}
-                                className={`px-3 py-1 text-sm ${statusFilter === 'inactive' ? 'bg-blue-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
-                            >
-                                Inactivos
-                            </button>
+                    {isAdmin && (
+                        <div className="mt-3 flex items-center gap-3">
+                            <span className="text-sm text-slate-600">Mostrar:</span>
+                            <div className="inline-flex overflow-hidden rounded-md border border-slate-200">
+                                <button
+                                    type="button"
+                                    onClick={() => setStatusFilter('all')}
+                                    className={`px-3 py-1 text-sm ${statusFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
+                                >
+                                    Todos
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setStatusFilter('active')}
+                                    className={`px-3 py-1 text-sm ${statusFilter === 'active' ? 'bg-blue-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
+                                >
+                                    Activos
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setStatusFilter('inactive')}
+                                    className={`px-3 py-1 text-sm ${statusFilter === 'inactive' ? 'bg-blue-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
+                                >
+                                    Inactivos
+                                </button>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </section>
 
                 {/* Products Table */}
@@ -325,35 +504,54 @@ export const Products = () => {
                                                 </td>
                                                 <td className="px-6 py-4 text-center">
                                                     <button
-                                                        onClick={() => handleToggleActive(productId, product?.isActive)}
+                                                        onClick={() => isAdmin ? handleToggleActive(productId, product?.isActive) : openPurchaseModal(product)}
+                                                        disabled={!isAdmin && !product?.isActive}
                                                         className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold transition ${
-                                                            product?.isActive
-                                                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                                            isAdmin
+                                                                ? (product?.isActive
+                                                                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200')
+                                                                : (product?.isActive
+                                                                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                                                    : 'bg-slate-100 text-slate-400 cursor-not-allowed')
                                                         }`}
                                                     >
-                                                        {product?.isActive ? (
-                                                            <>
-                                                                <CheckIcon className="h-4 w-4" />
-                                                                Activo
-                                                            </>
+                                                        {isAdmin ? (
+                                                            product?.isActive ? (
+                                                                <>
+                                                                    <CheckIcon className="h-4 w-4" />
+                                                                    Activo
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <XMarkIcon className="h-4 w-4" />
+                                                                    Inactivo
+                                                                </>
+                                                            )
                                                         ) : (
                                                             <>
-                                                                <XMarkIcon className="h-4 w-4" />
-                                                                Inactivo
+                                                                <ShoppingBagIcon className="h-4 w-4" />
+                                                                Comprar
                                                             </>
                                                         )}
                                                     </button>
                                                 </td>
                                                 <td className="px-6 py-4 text-center">
                                                     <div className="flex items-center justify-center gap-2">
-                                                        <button
-                                                            onClick={() => openEditModal(product)}
-                                                            className="rounded-lg p-2 text-slate-600 transition hover:bg-blue-100 hover:text-blue-600"
-                                                            title="Editar"
-                                                        >
-                                                            <PencilIcon className="h-4 w-4" />
-                                                        </button>
+                                                        {isAdmin ? (
+                                                            <button
+                                                                onClick={() => openEditModal(product)}
+                                                                className="rounded-lg p-2 text-slate-600 transition hover:bg-blue-100 hover:text-blue-600"
+                                                                title="Editar"
+                                                            >
+                                                                <PencilIcon className="h-4 w-4" />
+                                                            </button>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                                                                <CheckCircleIcon className="h-4 w-4" />
+                                                                {product?.isActive ? 'Disponible' : 'No disponible'}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
@@ -394,6 +592,65 @@ export const Products = () => {
                         </>
                     )}
                 </section>
+
+                {isClient && (
+                    <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+                        <article className="rounded-[1.5rem] border border-white/70 bg-white/88 p-6 shadow-[0_18px_50px_rgba(10,37,64,0.08)] backdrop-blur">
+                            <div className="mb-4 flex items-center justify-between gap-3">
+                                <div>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Compras recientes</p>
+                                    <h3 className="text-lg font-semibold text-slate-900">Historial de productos</h3>
+                                </div>
+                                <ShoppingBagIcon className="h-5 w-5 text-blue-600" />
+                            </div>
+
+                            {historyLoading ? (
+                                <p className="text-sm text-slate-500">Cargando historial...</p>
+                            ) : purchaseHistory.length === 0 ? (
+                                <p className="text-sm text-slate-500">Todavía no has comprado productos.</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {purchaseHistory.slice(0, 6).map((purchase) => (
+                                        <div key={purchase?._id || purchase?.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <p className="font-semibold text-slate-900">{purchase?.description || 'Compra de producto'}</p>
+                                                    <p className="text-xs text-slate-500">Cuenta: {purchase?.accountId || '-'}</p>
+                                                </div>
+                                                <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+                                                    {moneyFormatter.format(Number(purchase?.amount || 0))}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </article>
+
+                        <article className="rounded-[1.5rem] border border-white/70 bg-white/88 p-6 shadow-[0_18px_50px_rgba(10,37,64,0.08)] backdrop-blur">
+                            <div className="mb-4 flex items-center justify-between gap-3">
+                                <div>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Cuentas disponibles</p>
+                                    <h3 className="text-lg font-semibold text-slate-900">Cuenta para comprar</h3>
+                                </div>
+                                <CheckCircleIcon className="h-5 w-5 text-emerald-600" />
+                            </div>
+
+                            {activeAccounts.length === 0 ? (
+                                <p className="text-sm text-slate-500">Necesitas una cuenta activa para comprar productos.</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {activeAccounts.map((account) => (
+                                        <div key={account?._id || account?.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                            <p className="font-semibold text-slate-900">{account?.accountNumber || 'Cuenta'}</p>
+                                            <p className="text-sm text-slate-500">Saldo: {moneyFormatter.format(Number(account?.balance || 0))}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </article>
+                    </section>
+                )}
 
                 {/* Create/Edit Modal */}
                 {showModal && (
@@ -464,6 +721,59 @@ export const Products = () => {
                                     className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700"
                                 >
                                     {formLoading ? 'Guardando...' : editingId ? 'Actualizar' : 'Crear'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                )}
+
+                {purchaseOpen && selectedProduct && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+                        <form onSubmit={handlePurchase} className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+                            <h3 className="mb-2 text-xl font-semibold text-slate-900">Comprar producto</h3>
+                            <p className="mb-5 text-sm text-slate-500">
+                                Confirma la compra de {selectedProduct?.name || 'este producto'} por {moneyFormatter.format(Number(selectedProduct?.price || 0))}.
+                            </p>
+
+                            <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                <p className="font-semibold text-slate-900">{selectedProduct?.name}</p>
+                                <p className="text-sm text-slate-500">{selectedProduct?.description || 'Sin descripción'}</p>
+                            </div>
+
+                            <div className="mb-6">
+                                <label className="mb-2 block text-sm font-medium text-slate-700">Cuenta activa *</label>
+                                <select
+                                    value={selectedAccountId}
+                                    onChange={(event) => setSelectedAccountId(event.target.value)}
+                                    required
+                                    className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+                                >
+                                    <option value="">Selecciona una cuenta</option>
+                                    {activeAccounts.map((account) => (
+                                        <option key={account?._id || account?.id} value={account?._id || account?.id}>
+                                            {account?.accountNumber || account?._id} - {moneyFormatter.format(Number(account?.balance || 0))}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="flex items-center justify-end gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setPurchaseOpen(false);
+                                        setSelectedProduct(null);
+                                    }}
+                                    className="rounded-lg px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={purchaseLoading}
+                                    className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700"
+                                >
+                                    {purchaseLoading ? 'Comprando...' : 'Confirmar compra'}
                                 </button>
                             </div>
                         </form>
