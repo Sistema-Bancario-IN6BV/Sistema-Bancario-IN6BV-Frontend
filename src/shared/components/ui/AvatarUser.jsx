@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuthStore } from "../../../features/auth/store/authStore";
 import defaultAvatarImg from "../../../assets/img/hero.png";
+import { normalizeRole } from "../../../shared/utils/authRole";
 
 export const AvatarUser = () => {
     const { user, logout } = useAuthStore();
@@ -25,22 +26,13 @@ export const AvatarUser = () => {
         navigate("/", { replace: true });
     };
 
-    const getInitials = (name) => {
-        if (!name) return "U";
-        const parts = name.split(" ");
-        if (parts.length >= 2) {
-            return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-        }
-        return name.slice(0, 2).toUpperCase();
-    };
-
     const avatarSrc =
         user?.profilePicture && user.profilePicture.trim() !== "" && !user.profilePicture.includes("default-avatar_ewzxwx.png")
             ? user.profilePicture
             : defaultAvatarImg;
 
-    const roleDisplay = user?.role
-        ? user.role.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase())
+    const roleDisplay = normalizeRole(user?.role)
+        ? normalizeRole(user?.role).replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase())
         : "Cliente";
 
     return (
@@ -81,25 +73,7 @@ export const AvatarUser = () => {
                             <li>
                                 <Link to="/perfil" className="flex items-center gap-2 w-full p-2.5 rounded-lg hover:bg-white/10 transition-colors mb-1">Mi Perfil</Link>
                             </li>
-                            <li>
-                                <Link to="/notificaciones" className="flex items-center gap-2 w-full p-2.5 rounded-lg hover:bg-white/10 transition-colors mb-1">Notificaciones</Link>
-                            </li>
-
                             <div className="border-t border-white/10 my-1" />
-
-                            {(user?.role === "PLATFORM_ADMIN" || user?.role === "RESTAURANT_ADMIN") && (
-                                <>
-                                    <li>
-                                        <Link to="/dashboard" className="flex items-center gap-2 w-full p-2.5 rounded-lg hover:bg-white/10 transition-colors mb-1">Dashboard</Link>
-                                    </li>
-                                    {user?.role === "PLATFORM_ADMIN" && (
-                                        <li>
-                                            <Link to="/dashboard/users" className="block w-full p-2.5 rounded-lg hover:bg-white/10 transition-colors mb-2">Usuarios</Link>
-                                        </li>
-                                    )}
-                                    <div className="border-t border-white/10 my-1" />
-                                </>
-                            )}
 
                             <li>
                                 <button onClick={handleLogout} className="block w-full text-left p-2.5 rounded-lg hover:bg-white/10 transition-colors mt-1 font-semibold">Cerrar sesión</button>
