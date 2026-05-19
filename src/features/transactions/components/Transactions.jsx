@@ -1,7 +1,7 @@
 // Transactions.jsx — REDISEÑO VISUAL ÚNICAMENTE
 // Toda la lógica, estados, efectos, API calls, handlers son idénticos al original
 import React, { useState, useEffect, useMemo } from 'react';
-import { getTransactions, revertTransaction } from '../../../shared/api/admin';
+import { getTransactions, getMyTransactions, revertTransaction, updateTransaction } from '../../../shared/api/admin';
 import { showSuccess, showError } from '../../../shared/utils/toast';
 import { Spinner } from "../../../shared/components/layouts/Spinner.jsx";
 import { normalizeRole } from '../../../shared/utils/authRole';
@@ -90,12 +90,21 @@ export const Transactions = () => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading]           = useState(true);
   const [revertingId, setRevertingId]   = useState(null);
+  const [editingId, setEditingId]       = useState(null);
   const role    = normalizeRole(useAuthStore(state => state.user?.role));
   const isAdmin = role === 'ADMIN_ROLE';
 
   useEffect(() => { loadTransactions(); }, []);
 
   const normalizeType = (type) => String(type || '').toLowerCase();
+  const getTxId = (tx) => tx?.id || tx?._id;
+
+  const canEditTransaction = (tx) => {
+    if (!isAdmin) return false;
+    if (tx?.reverted) return false;
+    const type = normalizeType(tx?.type);
+    return ['deposit', 'transfer'].includes(type);
+  };
 
   const canRevertTransaction = (tx) => {
     if (!isAdmin) return false;
@@ -110,7 +119,9 @@ export const Transactions = () => {
   const loadTransactions = async () => {
     try {
       setLoading(true);
-      const res  = await getTransactions({ limit: 50 });
+      const res  = isAdmin
+        ? await getTransactions({ limit: 50 })
+        : await getMyTransactions(50);
       const data = res.data?.transactions ?? res.data?.transaction ?? res.data ?? [];
       setTransactions(Array.isArray(data) ? data : []);
       showSuccess('Transacciones cargadas');
@@ -135,6 +146,9 @@ export const Transactions = () => {
   }, [transactions]);
 
   const handleRevert = async (transactionId) => {
+    const confirm = window.confirm('¿Confirmas que deseas revertir esta transacción?');
+    if (!confirm) return;
+
     try {
       setRevertingId(transactionId);
       const res = await revertTransaction(transactionId);
@@ -144,6 +158,42 @@ export const Transactions = () => {
       showError(error?.response?.data?.message || error.message || 'No se pudo revertir la transacción');
     } finally {
       setRevertingId(null);
+    }
+  };
+
+  const handleEditTransaction = async (tx) => {
+    const transactionId = getTxId(tx);
+    if (!transactionId) {
+      showError('ID de transacción inválido');
+      return;
+    }
+
+    const currentAmount = Number(tx?.amount || 0);
+    const nextAmountRaw = window.prompt('Ingresa el nuevo monto para la transacción:', String(currentAmount));
+    if (nextAmountRaw === null) return;
+
+    const nextAmount = Number(nextAmountRaw);
+    if (!Number.isFinite(nextAmount) || nextAmount <= 0) {
+      showError('Monto inválido');
+      return;
+    }
+
+    const confirm = window.confirm(`¿Confirmas actualizar el monto de Q ${currentAmount.toFixed(2)} a Q ${nextAmount.toFixed(2)}?`);
+    if (!confirm) return;
+
+    try {
+      setEditingId(transactionId);
+      const res = await updateTransaction(transactionId, { amount: nextAmount });
+      if (res?.data?.success) {
+        showSuccess('Transacción actualizada correctamente');
+        await loadTransactions();
+      } else {
+        showError(res?.data?.message || 'No se pudo actualizar la transacción');
+      }
+    } catch (error) {
+      showError(error?.response?.data?.message || error.message || 'No se pudo actualizar la transacción');
+    } finally {
+      setEditingId(null);
     }
   };
 
@@ -265,10 +315,11 @@ export const Transactions = () => {
                     const tc      = TX_TYPE[typeKey] || TX_TYPE.transfer;
                     const sc      = statusStyle(tx.status);
                     const isEven  = idx % 2 === 0;
+                    const txId    = getTxId(tx);
 
                     return (
                       <tr
-                        key={tx.id}
+                        key={txId || `${tx.type}-${idx}`}
                         style={{ borderBottom:"1px solid rgba(255,255,255,0.04)", background: isEven ? "transparent" : "rgba(255,255,255,0.015)", transition:"background 0.15s" }}
                         onMouseEnter={e => e.currentTarget.style.background="rgba(79,142,247,0.05)"}
                         onMouseLeave={e => e.currentTarget.style.background= isEven ? "transparent" : "rgba(255,255,255,0.015)"}
@@ -316,19 +367,35 @@ export const Transactions = () => {
                               {tx.status}
                             </span>
 
+                            {canEditTransaction(tx) && (
+                              <button
+                                onClick={() => handleEditTransaction(tx)}
+                                disabled={editingId === txId}
+                                style={{
+                                  padding:"5px 12px", borderRadius:"8px", fontSize:"0.72rem", fontWeight:700, cursor:"pointer",
+                                  background:"rgba(79,142,247,0.14)", border:"1px solid rgba(79,142,247,0.28)", color:"#a5c8ff",
+                                  opacity: editingId === txId ? 0.6 : 1, transition:"all 0.18s",
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background="rgba(79,142,247,0.24)"; }}
+                                onMouseLeave={e => { e.currentTarget.style.background="rgba(79,142,247,0.14)"; }}
+                              >
+                                {editingId === txId ? "Editando…" : "Editar"}
+                              </button>
+                            )}
+
                             {canRevertTransaction(tx) && (
                               <button
-                                onClick={() => handleRevert(tx.id)}
-                                disabled={revertingId === tx.id}
+                                onClick={() => handleRevert(txId)}
+                                disabled={revertingId === txId}
                                 style={{
                                   padding:"5px 12px", borderRadius:"8px", fontSize:"0.72rem", fontWeight:700, cursor:"pointer",
                                   background:"rgba(248,113,113,0.12)", border:"1px solid rgba(248,113,113,0.28)", color:"#f87171",
-                                  opacity: revertingId === tx.id ? 0.6 : 1, transition:"all 0.18s",
+                                  opacity: revertingId === txId ? 0.6 : 1, transition:"all 0.18s",
                                 }}
                                 onMouseEnter={e => { e.currentTarget.style.background="rgba(248,113,113,0.25)"; }}
                                 onMouseLeave={e => { e.currentTarget.style.background="rgba(248,113,113,0.12)"; }}
                               >
-                                {revertingId === tx.id ? "Revirtiendo…" : "Revertir"}
+                                {revertingId === txId ? "Revirtiendo…" : "Revertir"}
                               </button>
                             )}
                           </div>

@@ -177,8 +177,11 @@ export const ClientDashboard = () => {
       if (Number(sourceAccount.balance || 0) < transferAmount) { showError('No tienes saldo suficiente'); return; }
 
       const payload = { type: 'TRANSFER', amount: transferAmount, sourceAccount: from };
-      if (favoriteId) payload.favoriteId = favoriteId;
-      else payload.destinationAccount = to;
+      if (favoriteId) {
+        payload.favoriteId = favoriteId;
+      } else {
+        payload.destinationAccount = to;
+      }
 
       const res = await createTransaction(payload);
       if (res?.data?.success) {
@@ -203,7 +206,7 @@ export const ClientDashboard = () => {
   const canRequestAccount = !accountSummary.hasAnyAccount && !pendingRequest;
 
   const handleUseFavorite = (favorite) => {
-    const destination   = favorite?.accountNumber || favorite?.account?.accountNumber || favorite?.accountId || '';
+    const destination   = favorite?.accountId || favorite?.account?._id || favorite?.account?.id || favorite?.account?.accountNumber || favorite?.accountNumber || '';
     const fallbackSource = myAccounts.find((a) => a.status === 'ACTIVE') || activeAccounts[0];
     setRecipient(destination); setSelectedFrom(getAccountId(fallbackSource)); setAmount('');
     setConfirmPayload({ from: getAccountId(fallbackSource), to: destination, amount: '', favoriteId: favorite?._id || favorite?.id });
@@ -620,9 +623,12 @@ export const ClientDashboard = () => {
                             <button
                               style={{ flex: 1, padding: '8px', borderRadius: '8px', fontSize: '0.78rem', fontWeight: 700, background: 'rgba(79,142,247,0.2)', border: '1px solid rgba(79,142,247,0.3)', color: '#a5c8ff', cursor: 'pointer' }}
                               onClick={async () => {
-                                if (!newFavAccount) { showError('Ingresa número de cuenta'); return; }
+                                    if (!newFavAccount) { showError('Ingresa número de cuenta'); return; }
                                 try {
-                                  const res = await addFavorite({ accountNumber: newFavAccount, alias: newFavAlias });
+                                      const resolved = await getAccountByNumber(newFavAccount);
+                                      const accountId = resolved?.data?.account?._id || resolved?.data?._id || resolved?.data?.account?.id || resolved?.data?.id;
+                                      if (!accountId) { showError('No se pudo resolver la cuenta para favoritos'); return; }
+                                      const res = await addFavorite({ accountId, alias: newFavAlias });
                                   const created = res?.data?.favorite ?? res?.data ?? null;
                                   if (created) setFavorites(prev => [created, ...prev]);
                                   setNewFavAccount(''); setNewFavAlias(''); setShowAddFavForm(false);

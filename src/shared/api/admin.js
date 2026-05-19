@@ -1,4 +1,5 @@
 import { axiosAdmin } from "./api";
+import { getPersistedAuthToken } from "../store/authStorage";
 
 // CUENTAS
 export const getAccounts = async () => {
@@ -8,6 +9,11 @@ export const getAccounts = async () => {
 export const getAccountById = async (accountId) => {
     if (!accountId) throw new Error("getAccountById: accountId required");
     return axiosAdmin.get(`/accounts/${accountId}`);
+};
+
+export const getAccountByNumber = async (accountNumber) => {
+    if (!accountNumber) throw new Error("getAccountByNumber: accountNumber required");
+    return axiosAdmin.get(`/accounts/lookup/${encodeURIComponent(String(accountNumber).trim())}`);
 };
 
 export const createAccount = async (accountData) => {
@@ -60,7 +66,19 @@ export const getTransactionById = async (transactionId) => {
 };
 
 export const createTransaction = async (payload) => {
+    try {
+        const token = getPersistedAuthToken();
+        console.debug('[createTransaction] payload:', payload);
+        console.debug('[createTransaction] auth:', token ? `${String(token).slice(0,10)}...` : 'no-token');
+    } catch (e) {
+        console.debug('[createTransaction] debug logging failed', e);
+    }
+
     return axiosAdmin.post('/transactions/create', payload);
+};
+
+export const updateTransaction = async (transactionId, payload) => {
+    return axiosAdmin.put(`/transactions/update/${transactionId}`, payload);
 };
 
 export const revertTransaction = async (transactionId) => {

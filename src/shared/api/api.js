@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useAuthStore } from "../../features/auth/store/authStore";
+import { clearPersistedAuth, getPersistedAuthToken } from "../store/authStorage";
 
 const axiosAuth = axios.create({
     baseURL: import.meta.env.VITE_AUTH_URL || import.meta.env.VITE_API_AUTH_URL || "http://localhost:5127/api/v1",
@@ -17,31 +17,41 @@ const axiosAdmin = axios.create({
     }
 });
 
-// Interceptor para axiosAuth
-axiosAuth.interceptors.request.use((config) => {
-    const token = useAuthStore.getState().token;
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-});
+const withAuthHeader = (config) => {
+    const token = getPersistedAuthToken();
 
-// Interceptor para axiosAdmin
-axiosAdmin.interceptors.request.use((config) => {
-    const token = useAuthStore.getState().token;
     if (token) {
         config.headers = config.headers || {};
         config.headers.Authorization = `Bearer ${token}`;
     }
-    return config;
-});
 
-// Interceptor de respuesta para manejar errores 401
+    return config;
+};
+
+axiosAuth.interceptors.request.use(withAuthHeader);
+axiosAdmin.interceptors.request.use(withAuthHeader);
+
+// Interceptor de respuesta para manejar errores y facilitar debug
 const handleAuthError = (error) => {
-    if (error.response?.status === 401) {
-        useAuthStore.getState().logout();
+    const status = error.response?.status;
+    const url = error.config?.url;
+
+    if (status === 401) {
+        clearPersistedAuth();
+        try { if (typeof window !== 'undefined') delete window.__AUTH_TOKEN__; } catch {}
         window.location.href = "/";
     }
+
+    // Log server errors to help debugging 500s (frontend-side only)
+    if (status >= 500) {
+        try {
+            // Avoid printing full token
+            console.error('[API][ServerError]', { url, status, response: error.response?.data });
+        } catch (e) {
+            console.error('[API][ServerError] failed to log error', e);
+        }
+    }
+
     return Promise.reject(error);
 };
 

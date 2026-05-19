@@ -27,7 +27,8 @@ import {
 } from "@heroicons/react/24/outline";
 import ConversionModal from '../../../shared/components/ui/ConversionModal';
 import { normalizeRole } from "../../../shared/utils/authRole";
-import { createTransaction, getAccountsWithMostMovements } from "../../../shared/api/admin";
+import { createTransaction, getAccountsWithMostMovements, getAccountByNumber } from "../../../shared/api/admin";
+import { resolveAccountReference } from "../../../shared/utils/accountReference";
 
 /* ─── Stat configs ─────────────────────────────────────────── */
 const STAT_CONFIGS = {
@@ -301,7 +302,26 @@ export const Accounts = () => {
     if (!ok) { showError(error || "No se pudo registrar el depósito"); return; }
     try {
       setDepositLoading(true);
-      const res = await createTransaction(payload);
+      const resolvedDestination = await resolveAccountReference(
+        payload?.destinationAccount,
+        accounts,
+        [],
+        async (accountNumber) => {
+          const response = await getAccountByNumber(accountNumber);
+          return response?.data?.account ?? response?.data ?? null;
+        }
+      );
+      const normalizedPayload = {
+        ...payload,
+        destinationAccount: resolvedDestination.accountId || payload?.destinationAccount,
+      };
+
+      if (!resolvedDestination.accountId) {
+        showError("No se pudo resolver la cuenta destino. Verifica el número o usa un ID válido.");
+        return;
+      }
+
+      const res = await createTransaction(normalizedPayload);
       if (res?.data?.success) {
         showSuccess("Depósito registrado correctamente");
         await getAccounts();
