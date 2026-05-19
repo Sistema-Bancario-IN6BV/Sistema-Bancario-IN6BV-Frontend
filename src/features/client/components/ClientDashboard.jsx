@@ -7,6 +7,7 @@ import { getMyAccountRequests, getMyAccountSummary, requestAccount, getFavorites
 import { Spinner } from '../../../shared/components/layouts/Spinner';
 import ConversionModal from '../../../shared/components/ui/ConversionModal';
 import { showError, showSuccess } from '../../../shared/utils/toast';
+import { normalizeRole } from '../../../shared/utils/authRole';
 import {
   ArrowUpRightIcon,
   ArrowPathIcon,
@@ -26,6 +27,16 @@ const statusBadgeClass = (status) => {
         default: return "bg-slate-400/20 text-slate-100 border border-slate-300/30";
     }
 };
+
+const normalizeTxType = (type) => String(type || '').toUpperCase();
+
+const isSameDay = (leftDate, rightDate = new Date()) => {
+    if (!leftDate) return false;
+    const left = new Date(leftDate);
+    return left.toDateString() === rightDate.toDateString();
+};
+
+const getAccountId = (account) => account?._id || account?.id || '';
 
 export const ClientDashboard = () => {
     const { user } = useAuthStore();
@@ -49,8 +60,35 @@ export const ClientDashboard = () => {
     const [newFavAccount, setNewFavAccount] = useState('');
     const [newFavAlias, setNewFavAlias] = useState('');
 
-    const isAdmin = user?.role === 'ADMIN_ROLE' || user?.role === 'PLATFORM_ADMIN';
-    const isClient = user?.role === 'USER_ROLE' || user?.role === 'CUSTOMER';
+    const normalizedRole = normalizeRole(user?.role);
+    const isAdmin = normalizedRole === 'ADMIN_ROLE';
+    const isClient = normalizedRole === 'USER_ROLE';
+
+    const activeAccounts = useMemo(
+        () => accounts.filter((account) => account.status === 'ACTIVE'),
+        [accounts]
+    );
+
+    const myAccounts = useMemo(
+        () => accounts.filter((account) => String(account.externalUserId) === String(user?.id)),
+        [accounts, user?.id]
+    );
+
+    const todaysOutgoingTransferTotal = useMemo(() => {
+        return recentTransactions.reduce((sum, transaction) => {
+            const type = normalizeTxType(transaction?.type);
+            const createdAt = transaction?.createdAt || transaction?.date;
+            const sourceUserId = String(transaction?.sourceAccount?.externalUserId || '');
+
+            if (type !== 'TRANSFER') return sum;
+            if (!isSameDay(createdAt)) return sum;
+            if (sourceUserId !== String(user?.id)) return sum;
+
+            return sum + Number(transaction?.amount || 0);
+        }, 0);
+    }, [recentTransactions, user?.id]);
+
+    const remainingDailyTransferLimit = Math.max(10000 - todaysOutgoingTransferTotal, 0);
 
     const myAccountOwner = useMemo(() => {
         return users.find(u => u.uid === user?.id || u.id === user?.id);
@@ -83,7 +121,7 @@ export const ClientDashboard = () => {
             try {
                 // ensure accounts are loaded
                 await useAccountStore.getState().getAccounts();
-                const txRes = await getMyTransactions(5);
+                const txRes = await getMyTransactions(100);
                 const txs = txRes.data?.transactions ?? txRes.data ?? [];
                 setRecentTransactions(Array.isArray(txs) ? txs : []);
                 // load favorites for quick transfer
@@ -92,7 +130,8 @@ export const ClientDashboard = () => {
                     const favs = favRes?.data?.favorites ?? favRes?.data ?? [];
                     setFavorites(Array.isArray(favs) ? favs : []);
                 } catch (err) {
-                    // ignore
+                     
+                    console.warn('Failed to load favorites for client dashboard:', err);
                 }
             } catch (err) {
                 // silently ignore for now
@@ -111,10 +150,16 @@ export const ClientDashboard = () => {
             const to = confirmPayload.to || recipient;
             const favoriteId = confirmPayload.favoriteId;
             const transferAmount = Number(confirmPayload.amount || amount);
+            const sourceAccount = accounts.find((account) => getAccountId(account) === String(from));
 
             if (!from) { showError('Selecciona la cuenta origen'); return; }
             if (!favoriteId && !to) { showError('Ingresa o selecciona un destinatario'); return; }
             if (!transferAmount || transferAmount <= 0) { showError('Ingresa un monto válido'); return; }
+            if (!sourceAccount) { showError('La cuenta origen no existe'); return; }
+            if (sourceAccount.status !== 'ACTIVE') { showError('La cuenta origen debe estar activa'); return; }
+            if (transferAmount > 2000) { showError('La transferencia no puede superar Q2000'); return; }
+            if (transferAmount > remainingDailyTransferLimit) { showError('Ya alcanzaste el límite diario de Q10000'); return; }
+            if (Number(sourceAccount.balance || 0) < transferAmount) { showError('No tienes saldo suficiente'); return; }
 
             const payload = { type: 'TRANSFER', amount: transferAmount, sourceAccount: from };
             if (favoriteId) payload.favoriteId = favoriteId;
@@ -130,7 +175,8 @@ export const ClientDashboard = () => {
                     const txs = txRes.data?.transactions ?? txRes.data ?? [];
                     setRecentTransactions(Array.isArray(txs) ? txs : []);
                 } catch (err) {
-                    // ignore
+                     
+                    console.warn('getMyTransactions failed:', err);
                 }
 
                 setConfirmOpen(false);
@@ -151,6 +197,22 @@ export const ClientDashboard = () => {
     };
 
     const canRequestAccount = !accountSummary.hasAnyAccount && !pendingRequest;
+
+    const handleUseFavorite = (favorite) => {
+        const destination = favorite?.accountNumber || favorite?.account?.accountNumber || favorite?.accountId || '';
+        const fallbackSource = myAccounts.find((account) => account.status === 'ACTIVE') || activeAccounts[0];
+
+        setRecipient(destination);
+        setSelectedFrom(getAccountId(fallbackSource));
+        setAmount('');
+        setConfirmPayload({
+            from: getAccountId(fallbackSource),
+            to: destination,
+            amount: '',
+            favoriteId: favorite?._id || favorite?.id,
+        });
+        setConfirmOpen(true);
+    };
 
     const handleRequestAccount = async () => {
         try {
@@ -404,7 +466,7 @@ export const ClientDashboard = () => {
                                     <label className="text-xs font-medium text-blue-200/70 px-1">Desde Cuenta</label>
                                     <select className="w-full rounded-md border border-white/10 bg-white/10 px-4 py-3 text-sm backdrop-blur focus:outline-none focus:ring-2 focus:ring-blue-400" value={selectedFrom} onChange={(e) => setSelectedFrom(e.target.value)}>
                                         <option value="">Selecciona cuenta</option>
-                                        {accounts.map(acc => (
+                                        {activeAccounts.map(acc => (
                                             <option key={acc._id || acc.id} value={acc._id || acc.id} className="text-slate-900">
                                                 {acc.accountNumber} - Q {acc.balance}
                                             </option>
@@ -440,6 +502,9 @@ export const ClientDashboard = () => {
                                         setConfirmOpen(true);
                                     }}>Confirmar Transferencia</span>
                                 </button>
+                                <p className="text-[11px] text-blue-200/80">
+                                    Límite diario restante: Q {remainingDailyTransferLimit.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </p>
                                 {lastTransferSuccess && (
                                     <div className="mt-4 p-3 rounded-md bg-white/10 text-white text-sm">
                                         <div className="flex items-center justify-between">
@@ -487,16 +552,7 @@ export const ClientDashboard = () => {
                                                     const acctNum = f.accountNumber || f.account?.accountNumber || f.accountId || f.account?._id || '';
                                                     const display = f.alias || f.name || acctNum || 'Favorito';
                                                     return (
-                                                        <button key={f._id || f.id || f.accountId || acctNum} className="flex items-center justify-between rounded-md bg-white/10 px-3 py-2 text-sm" onClick={() => {
-                                                            // Prefill recipient and also set 'Desde' account (first available account)
-                                                            setRecipient(acctNum);
-                                                            const firstAcc = accounts && accounts.length ? accounts.find(a => a.status === 'ACTIVE') || accounts[0] : null;
-                                                            if (firstAcc) setSelectedFrom(firstAcc._id || firstAcc.id || '');
-                                                            setAmount('');
-                                                            // open confirm transfer modal (attach favorite id)
-                                                            setConfirmPayload({ from: firstAcc?._id || firstAcc?.id || '', to: acctNum, amount: '', favoriteId: f._id });
-                                                            setConfirmOpen(true);
-                                                        }}>
+                                                        <button key={f._id || f.id || f.accountId || acctNum} className="flex items-center justify-between rounded-md bg-white/10 px-3 py-2 text-sm" onClick={() => handleUseFavorite(f)}>
                                                             <span>{display}</span>
                                                             <span className="text-xs text-blue-200/80">Usar</span>
                                                         </button>

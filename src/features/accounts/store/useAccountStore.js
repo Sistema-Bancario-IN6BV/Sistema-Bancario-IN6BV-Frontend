@@ -72,6 +72,8 @@ export const useAccountStore = create((set, get) => ({
       }
     } catch (err) {
       // si falla la validación por alguna razón, no bloquear la ejecución explícitamente
+       
+      console.warn('createAccount validation check failed:', err);
     }
     try {
       set({ loading: true, error: null });
