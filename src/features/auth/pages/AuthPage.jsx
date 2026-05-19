@@ -21,7 +21,6 @@ import { Navigate } from "react-router-dom";
 import paper from "paper";
 import LoginCard    from "../components/LoginCard";
 import RegisterCard from "../components/RegisterCard";
-import { useAuthStore } from "../store/authStore";
 
 /* ── Logo SVG bancario ── */
 const BankLogoIcon = () => (
@@ -57,7 +56,12 @@ function usePaperCanvas(canvasRef) {
                     paper.project.clear();
                     paper.view?.remove();
                 }
-            } catch (_) {}
+            } catch (err) {
+                // Log cleanup errors from Paper.js to aid debugging
+                // but don't rethrow during unmount.
+                 
+                console.warn('Paper cleanup failed:', err);
+            }
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -144,7 +148,6 @@ function initPaper(canvas) {
 export const AuthPage = () => {
     const [view, setView] = useState("login");
     const canvasRef = useRef(null);
-    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const isRegister = view === "register";
 
     usePaperCanvas(canvasRef);
