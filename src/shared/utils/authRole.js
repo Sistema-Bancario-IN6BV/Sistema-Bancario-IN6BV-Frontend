@@ -1,3 +1,4 @@
+//authRole.js
 export const CANONICAL_ROLES = {
     ADMIN_ROLE: "ADMIN_ROLE",
     USER_ROLE: "USER_ROLE",

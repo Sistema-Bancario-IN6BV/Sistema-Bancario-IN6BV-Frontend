@@ -1,3 +1,4 @@
+//auth.js
 import { axiosAuth } from "./api";
 
 export const login = async (data) => {
@@ -47,8 +48,8 @@ export const getProfile = async () => {
 };
 
 export const updateProfile = async (formData) => {
-    // Use postForm so axios sets correct multipart/form-data headers
-    return await axiosAuth.postForm("/auth/profile", formData);
+    // Use putForm so axios sets correct multipart/form-data headers
+    return await axiosAuth.putForm("/auth/profile", formData);
 };
 
 export const verifyEmail = async (token) => {
