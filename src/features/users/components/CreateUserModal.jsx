@@ -57,7 +57,7 @@ export const CreateUserModal = ({ isOpen, onClose, onCreate, loading, error }) =
                 </div>
 
                 {/* Body */}
-                <form onSubmit={handleSubmit(submit)}>
+                <form onSubmit={handleSubmit(submit)} className="create-user-form">
                     <div className="modal-body">
 
                         {/* Nombre + Apellido */}
@@ -251,11 +251,10 @@ export const CreateUserModal = ({ isOpen, onClose, onCreate, loading, error }) =
                             type="submit"
                             disabled={loading}
                             className="btn-primary"
-                            style={{ width: 'auto', padding: '9px 22px' }}
                         >
                             {loading
-                                ? <><span className="spinner" /> Creando...</>
-                                : 'Crear usuario'
+                                ? <><Spinner /> Creando...</>
+                                : '✓ Crear usuario'
                             }
                         </button>
                     </div>
