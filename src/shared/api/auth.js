@@ -1,7 +1,14 @@
 import { axiosAuth } from "./api";
 
 export const login = async (data) => {
-    return await axiosAuth.post("/auth/login", data);
+    const resp = await axiosAuth.post("/auth/login", data);
+    // Expose token briefly so axios interceptor can pick it up immediately
+    try {
+        if (typeof window !== 'undefined' && resp?.data?.token) {
+            window.__AUTH_TOKEN__ = resp.data.token;
+        }
+    } catch {}
+    return resp;
 };
 
 export const register = async (formData) => {

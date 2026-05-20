@@ -58,7 +58,7 @@ export const AppRoutes = () => {
                 <Route path="accounts" element={<Accounts />} />
                 <Route path="transactions" element={<Transactions />} />
                 <Route path="products" element={<Products />} />
-                <Route path="services" element={<Products />} />
+                <Route path="services" element={<Services />} />
             </Route>
 
             {/* Perfil: mostrar dentro del layout de Dashboard para mantener apariencia */}
