@@ -1763,3 +1763,98 @@ body {
   .auth-box-logo    { padding: 20px 20px 0; }
 }
 
+/* ===================== CREATE USER FORM IMPROVEMENTS ===================== */
+.create-user-form {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.create-user-form .modal-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.create-user-form .modal-footer {
+  position: sticky;
+  bottom: 0;
+  background: var(--color-bg-card);
+  border-top: 2px solid var(--color-border);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.08);
+  padding: 18px 24px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Mejora del footer para que los botones sean más visibles */
+.create-user-form .btn-secondary,
+.create-user-form .btn-primary {
+  padding: 11px 24px;
+  font-weight: 600;
+  min-width: 120px;
+  text-align: center;
+}
+
+.create-user-form .btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(46, 111, 212, 0.35);
+  flex-shrink: 0;
+}
+
+.create-user-form .btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-mid);
+  box-shadow: 0 6px 20px rgba(46, 111, 212, 0.45);
+  transform: translateY(-1px);
+}
+
+/* Estilo mejorado para campos */
+.modal-field {
+  margin-bottom: 16px;
+}
+
+.modal-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--color-text-main);
+  margin-bottom: 8px;
+}
+
+.modal-input,
+.modal-select,
+.file-input {
+  background: var(--color-bg-app);
+  border: 1.5px solid var(--color-border);
+  transition: all 0.2s ease;
+}
+
+.modal-input:focus,
+.modal-select:focus {
+  background: var(--color-bg-card);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(46, 111, 212, 0.1);
+}
+
+/* Ayuda de campos */
+.modal-field-help {
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+/* Header accent mejorado */
+.modal-header-accent {
+  background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary-mid) 100%);
+  border-bottom: none;
+}
+
+.modal-header-info {
+  flex: 1;
+}
+
+

@@ -1,8 +1,20 @@
+// auth.js — DOS FIXES PUNTUALES, resto idéntico al original
+//
+// FIX 1 — updateProfile: era postForm → debe ser putForm
+//   El controller del backend declara [HttpPut("profile")].
+//   POST devuelve 404/405, el frontend recibe "éxito" del interceptor
+//   pero el body no se procesa → nada se guarda.
+//
+// FIX 2 — getProfile: el backend responde { success, message, data: {...} }
+//   Se retorna { profile: data } donde data ES ese objeto completo.
+//   ProfilePage.jsx espera { profile } y luego extractProfile() saca .data.
+//   Ahora se retorna { profile: data.data ?? data } para que los campos
+//   lleguen directos sin necesitar extracciones adicionales.
+
 import { axiosAuth } from "./api";
 
 export const login = async (data) => {
     const resp = await axiosAuth.post("/auth/login", data);
-    // Expose token briefly so axios interceptor can pick it up immediately
     try {
         if (typeof window !== 'undefined' && resp?.data?.token) {
             window.__AUTH_TOKEN__ = resp.data.token;
@@ -41,14 +53,18 @@ export const getUserById = async (userId) => {
     return data;
 };
 
+// FIX 2: el backend responde { success, message, data: { name, email, ... } }
+// Se normaliza aquí para que ProfilePage reciba el objeto de usuario directo
 export const getProfile = async () => {
     const { data } = await axiosAuth.get("/auth/profile");
-    return { profile: data };
+    // data = { success: true, message: "...", data: { name, email, ... } }
+    const profile = data?.data ?? data;
+    return { profile };
 };
 
+// FIX 1: era postForm → putForm  (el controller es [HttpPut("profile")])
 export const updateProfile = async (formData) => {
-    // Use postForm so axios sets correct multipart/form-data headers
-    return await axiosAuth.postForm("/auth/profile", formData);
+    return await axiosAuth.putForm("/auth/profile", formData);
 };
 
 export const verifyEmail = async (token) => {
