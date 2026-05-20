@@ -117,10 +117,15 @@ export const deleteFavorite = async (id) => {
     return axiosAdmin.delete(`/favorites/delete/${id}`);
 };
 
+export const fastTransfer = async (payload) => {
+    return axiosAdmin.post('/favorites/fastTransfer', payload);
+};
+
 // USUARIOS
 export const getUsers = async () => {
     return axiosAdmin.get('/users');
 };
+
 
 export const getUserById = async (userId) => {
     return axiosAdmin.get(`/users/${userId}`);
