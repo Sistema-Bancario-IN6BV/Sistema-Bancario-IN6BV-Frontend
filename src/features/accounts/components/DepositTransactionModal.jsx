@@ -75,15 +75,13 @@ const formatAccountLabel = (account, owner) => {
    DepositTransactionModal — lógica 100% original
    ══════════════════════════════════════════════════════════════ */
 export const DepositTransactionModal = ({ isOpen, onClose, onSubmit, loading, accounts = [], users = [], destinationAccount }) => {
-  // ── Estado: idéntico al original ──────────────────────────
-  const [form, setForm] = useState({ sourceAccount:"", destinationAccount: destinationAccount || "", amount:"", description:"" });
+  // Estado: quitar sourceAccount — depósito administrativo desde admin
+  const [form, setForm] = useState({ destinationAccount: destinationAccount || "", amount: "", description: "" });
 
   useEffect(() => {
     if (!isOpen) return;
-    setForm({ sourceAccount:"", destinationAccount: destinationAccount || "", amount:"", description:"" });
+    setForm({ destinationAccount: destinationAccount || "", amount: "", description: "" });
   }, [isOpen, destinationAccount]);
-
-  const activeAccounts = useMemo(() => accounts.filter(a => a.status === "ACTIVE"), [accounts]);
 
   if (!isOpen) return null;
 
@@ -91,12 +89,10 @@ export const DepositTransactionModal = ({ isOpen, onClose, onSubmit, loading, ac
   const submit = (event) => {
     event.preventDefault();
     const amount = Number(form.amount);
-    if (!form.sourceAccount)      { onSubmit?.({ ok:false, error:"Debes seleccionar la cuenta origen" }); return; }
     if (!form.destinationAccount) { onSubmit?.({ ok:false, error:"Debes indicar la cuenta destino" }); return; }
     if (!amount || amount <= 0)   { onSubmit?.({ ok:false, error:"Ingresa un monto válido" }); return; }
     if (amount > 2000)            { onSubmit?.({ ok:false, error:"El depósito no puede superar Q2000 por transacción" }); return; }
-    if (String(form.sourceAccount) === String(form.destinationAccount)) { onSubmit?.({ ok:false, error:"La cuenta origen y destino no pueden ser la misma" }); return; }
-    onSubmit?.({ ok:true, payload: { type:"DEPOSIT", amount, sourceAccount:form.sourceAccount, destinationAccount:form.destinationAccount, description: form.description || "Depósito administrativo" } });
+    onSubmit?.({ ok:true, payload: { type:"DEPOSIT", amount, sourceAccount: null, destinationAccount: form.destinationAccount, description: form.description || "Depósito administrativo" } });
   };
 
   const selectStyle = {
@@ -147,34 +143,20 @@ export const DepositTransactionModal = ({ isOpen, onClose, onSubmit, loading, ac
           <form onSubmit={submit} style={{ display:"flex", flexDirection:"column", flex:1, minHeight:0 }}>
             <div style={{ padding:"20px 24px 80px", overflowY:"auto", flex:1, display:"flex", flexDirection:"column", gap:"16px" }}>
 
-              {/* Row 1: source + destination */}
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"14px" }}>
-                <div>
-                  <label style={labelStyle}>Cuenta origen</label>
-                  <select style={selectStyle} value={form.sourceAccount}
-                    onChange={e => setForm(p => ({ ...p, sourceAccount: e.target.value }))}
-                    onFocus={focusInput} onBlur={blurInput}>
-                    <option value="">Selecciona una cuenta</option>
-                    {activeAccounts.map(account => {
-                      const owner = users.find(u => u.uid === account.externalUserId || u.id === account.externalUserId);
-                      return (
-                        <option key={account._id || account.id} value={account._id || account.id}>
-                          {formatAccountLabel(account, owner)}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
+              {/* Row 1: cuenta destino (inmutable) */}
+              <div style={{ display:"grid", gridTemplateColumns:"1fr", gap:"14px" }}>
                 <div>
                   <label style={labelStyle}>Cuenta destino</label>
-                  <input style={inputStyle} value={form.destinationAccount}
-                    onChange={e => setForm(p => ({ ...p, destinationAccount: e.target.value }))}
-                    placeholder="Id o número de cuenta"
-                    onFocus={focusInput} onBlur={blurInput}
+                  {/* Mostrar la cuenta destino como campo de solo lectura (no editable) */}
+                  <input style={{ ...inputStyle, background: "rgba(255,255,255,0.03)", cursor: "default" }} value={(() => {
+                    // intentar resolver etiqueta legible desde accounts/users; si no, mostrar el id crudo
+                    const acct = accounts.find(a => (a._id || a.id) === form.destinationAccount || a.accountNumber === form.destinationAccount);
+                    const owner = acct ? users.find(u => u.uid === acct.externalUserId || u.id === acct.externalUserId) : null;
+                    return acct ? formatAccountLabel(acct, owner) : String(form.destinationAccount || "");
+                  })()}
+                    readOnly
+                    onFocus={e => e.target.blur()}
                   />
-                  <p style={{ fontSize:"0.7rem", color:"rgba(232,240,254,0.3)", marginTop:"4px" }}>
-                    Puedes pegar el ID o el número de cuenta destino.
-                  </p>
                 </div>
               </div>
 
