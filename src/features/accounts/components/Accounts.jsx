@@ -316,6 +316,13 @@ export const Accounts = () => {
         destinationAccount: resolvedDestination.accountId || payload?.destinationAccount,
       };
 
+      // Si el administrador usa el modal de depósito (no hay sourceAccount), enviar como CREDIT
+      if (isAdmin && normalizedPayload.type === 'DEPOSIT' && !normalizedPayload.sourceAccount) {
+        normalizedPayload.type = 'CREDIT';
+        // fuente no aplica para créditos administrativos
+        delete normalizedPayload.sourceAccount;
+      }
+
       if (!resolvedDestination.accountId) {
         showError("No se pudo resolver la cuenta destino. Verifica el número o usa un ID válido.");
         return;
