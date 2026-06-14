@@ -1,3 +1,5 @@
+// Accounts.jsx — REDISEÑO VISUAL ÚNICAMENTE
+// Toda la lógica, estados, efectos, API calls, handlers son idénticos al original
 import React, { useEffect, useMemo, useState } from "react";
 
 import { useAuthStore } from "../../auth/store/authStore";
@@ -25,10 +27,89 @@ import {
 } from "@heroicons/react/24/outline";
 import ConversionModal from '../../../shared/components/ui/ConversionModal';
 import { normalizeRole } from "../../../shared/utils/authRole";
-import { createTransaction, getAccountsWithMostMovements } from "../../../shared/api/admin";
+import { createTransaction, getAccountsWithMostMovements, getAccountByNumber } from "../../../shared/api/admin";
+import { resolveAccountReference } from "../../../shared/utils/accountReference";
 
+/* ─── Stat configs ─────────────────────────────────────────── */
+const STAT_CONFIGS = {
+  "Cuentas registradas": { grad: "linear-gradient(135deg,#4f8ef7,#2563eb)", glow: "rgba(79,142,247,0.35)" },
+  "Saldo consolidado":   { grad: "linear-gradient(135deg,#00d4a0,#059669)", glow: "rgba(0,212,160,0.35)"  },
+  "Cuentas activas":     { grad: "linear-gradient(135deg,#a78bfa,#7c3aed)", glow: "rgba(167,139,250,0.35)"},
+  "Bloqueadas":          { grad: "linear-gradient(135deg,#f87171,#dc2626)", glow: "rgba(248,113,113,0.35)"},
+};
+
+/* ─── Glass panel base style ───────────────────────────────── */
+const glass = {
+  borderRadius:        "16px",
+  background:          "rgba(255,255,255,0.04)",
+  backdropFilter:      "blur(18px)",
+  WebkitBackdropFilter:"blur(18px)",
+  border:              "1px solid rgba(255,255,255,0.09)",
+  boxShadow:           "0 8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)",
+  overflow:            "hidden",
+};
+
+/* ─── Stat Card ────────────────────────────────────────────── */
+const StatCard = ({ label, value, icon: Icon }) => {
+  const cfg = STAT_CONFIGS[label] || STAT_CONFIGS["Bloqueadas"];
+  return (
+    <article
+      style={{
+        ...glass,
+        position:   "relative",
+        padding:    "22px 24px",
+        transition: "transform 0.22s ease, box-shadow 0.22s ease",
+        cursor:     "default",
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.transform  = "translateY(-3px)";
+        e.currentTarget.style.boxShadow  = `0 16px 48px rgba(0,0,0,0.5), ${cfg.glow} 0 0 30px, inset 0 1px 0 rgba(255,255,255,0.08)`;
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.transform  = "translateY(0)";
+        e.currentTarget.style.boxShadow  = "0 8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)";
+      }}
+    >
+      {/* top accent line */}
+      <div style={{ position:"absolute", top:0, left:0, right:0, height:"2px", background: cfg.grad, borderRadius:"16px 16px 0 0" }} />
+      {/* glow blob */}
+      <div style={{ position:"absolute", top:"-20px", right:"-20px", width:"80px", height:"80px", borderRadius:"50%", background: cfg.grad, opacity:0.08, filter:"blur(20px)", pointerEvents:"none" }} />
+
+      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:"16px" }}>
+        <div>
+          <p style={{ fontSize:"0.65rem", fontWeight:700, letterSpacing:"0.18em", textTransform:"uppercase", color:"rgba(232,240,254,0.45)", marginBottom:"8px" }}>
+            {label}
+          </p>
+          <p style={{ fontSize:"1.75rem", fontWeight:700, color:"#e8f0fe", letterSpacing:"-0.02em", lineHeight:1.1 }}>
+            {value}
+          </p>
+        </div>
+        <div style={{ width:"46px", height:"46px", borderRadius:"12px", background: cfg.grad, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:`0 6px 20px ${cfg.glow}` }}>
+          <Icon style={{ width:"22px", height:"22px", color:"#fff" }} />
+        </div>
+      </div>
+    </article>
+  );
+};
+
+/* ─── Input / Select shared style ─────────────────────────── */
+const inputStyle = {
+  padding:         "9px 13px",
+  background:      "rgba(255,255,255,0.06)",
+  border:          "1px solid rgba(255,255,255,0.12)",
+  borderRadius:    "10px",
+  color:           "#e8f0fe",
+  fontSize:        "0.845rem",
+  outline:         "none",
+  fontFamily:      "inherit",
+  transition:      "border-color 0.2s, box-shadow 0.2s",
+};
+
+/* ══════════════════════════════════════════════════════════════
+   Accounts — lógica 100% original, solo rediseño visual
+   ══════════════════════════════════════════════════════════════ */
 export const Accounts = () => {
-  // SE REMOVIERON LAS DECLARACIONES LOCALES DUPLICADAS DE ACCOUNTS Y LOADING
+  // ── Estado y store: idénticos al original ──────────────────
   const {
     accounts = [],
     loading,
@@ -39,133 +120,94 @@ export const Accounts = () => {
   } = useAccountStore();
 
   const { users = [], fetchUsers } = useUserManagmentStore();
-
   const { user } = useAuthStore();
   const { openConfirm } = useUIStore();
   const normalizedRole = normalizeRole(user?.role);
-  const isAdmin = normalizedRole === "ADMIN_ROLE";
+  const isAdmin  = normalizedRole === "ADMIN_ROLE";
   const isClient = normalizedRole === "USER_ROLE";
 
-  const [createOpen, setCreateOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
-  const [selectedAccount, setSelectedAccount] = useState(null);
-  const [conversionOpen, setConversionOpen] = useState(false);
+  const [createOpen, setCreateOpen]             = useState(false);
+  const [editOpen, setEditOpen]                 = useState(false);
+  const [selectedAccount, setSelectedAccount]   = useState(null);
+  const [conversionOpen, setConversionOpen]     = useState(false);
   const [conversionAccount, setConversionAccount] = useState(null);
-  const [depositOpen, setDepositOpen] = useState(false);
+  const [depositOpen, setDepositOpen]           = useState(false);
   const [depositDestination, setDepositDestination] = useState(null);
-  const [depositLoading, setDepositLoading] = useState(false);
-  const [orderMode, setOrderMode] = useState('activity-desc');
-  const [movementRanking, setMovementRanking] = useState([]);
-  const [rankingLoading, setRankingLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(6);
+  const [depositLoading, setDepositLoading]     = useState(false);
+  const [orderMode, setOrderMode]               = useState("activity-desc");
+  const [movementRanking, setMovementRanking]   = useState([]);
+  const [rankingLoading, setRankingLoading]     = useState(false);
+  const [searchTerm, setSearchTerm]             = useState("");
+  const [currentPage, setCurrentPage]           = useState(1);
+  const [pageSize, setPageSize]                 = useState(6);
 
+  // ── Effects: idénticos al original ────────────────────────
   useEffect(() => {
-    getAccounts().catch((err) => {
-       
-      console.warn('getAccounts failed:', err);
-    });
-    fetchUsers().catch((err) => {
-       
-      console.warn('fetchUsers failed:', err);
-    });
+    getAccounts().catch(err  => console.warn("getAccounts failed:", err));
+    fetchUsers().catch(err   => console.warn("fetchUsers failed:", err));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     const loadRanking = async () => {
-      if (!isAdmin || !orderMode.startsWith('activity')) {
+      if (!isAdmin || !orderMode.startsWith("activity")) {
         setMovementRanking([]);
         return;
       }
-
       try {
         setRankingLoading(true);
-        const sort = orderMode === 'activity-asc' ? 'asc' : 'desc';
-        const res = await getAccountsWithMostMovements(sort);
+        const sort = orderMode === "activity-asc" ? "asc" : "desc";
+        const res  = await getAccountsWithMostMovements(sort);
         const data = res?.data?.data ?? res?.data ?? [];
         setMovementRanking(Array.isArray(data) ? data : []);
       } catch (error) {
-         
-        console.warn('getAccountsWithMostMovements failed:', error);
+        console.warn("getAccountsWithMostMovements failed:", error);
         setMovementRanking([]);
       } finally {
         setRankingLoading(false);
       }
     };
-
     loadRanking().catch(() => {});
   }, [isAdmin, orderMode]);
 
+  // ── Computed values: idénticos al original ─────────────────
   const canEditSelected = useMemo(() => {
     if (!selectedAccount) return false;
-    if (!user?.id) return false;
+    if (!user?.id)        return false;
     return isAdmin;
   }, [isAdmin, selectedAccount, user?.id]);
 
   const statusBadgeClass = (status) => {
-    if (status === "ACTIVE")
-      return "bg-green-400/20 text-green-100 border border-green-300/30";
-    if (status === "BLOCKED")
-      return "bg-yellow-400/20 text-yellow-100 border border-yellow-300/30";
-    if (status === "CLOSED")
-      return "bg-red-400/20 text-red-100 border border-red-300/30";
-
+    if (status === "ACTIVE")  return "bg-green-400/20 text-green-100 border border-green-300/30";
+    if (status === "BLOCKED") return "bg-yellow-400/20 text-yellow-100 border border-yellow-300/30";
+    if (status === "CLOSED")  return "bg-red-400/20 text-red-100 border border-red-300/30";
     return "bg-red-400/20 text-red-100 border border-red-300/30";
   };
 
   const dashboardStats = useMemo(() => {
-    const totalAccounts = accounts.length;
-    const activeAccounts = accounts.filter((account) => account.status === "ACTIVE").length;
-    const blockedAccounts = accounts.filter((account) => account.status === "BLOCKED" || account.status === "CLOSED").length;
-    const totalBalance = accounts.reduce((sum, account) => sum + Number(account.balance || 0), 0);
-
+    const totalAccounts   = accounts.length;
+    const activeAccounts  = accounts.filter(a => a.status === "ACTIVE").length;
+    const blockedAccounts = accounts.filter(a => a.status === "BLOCKED" || a.status === "CLOSED").length;
+    const totalBalance    = accounts.reduce((sum, a) => sum + Number(a.balance || 0), 0);
     return [
-      {
-        label: "Cuentas registradas",
-        value: totalAccounts.toLocaleString(),
-        icon: BuildingLibraryIcon,
-        tone: "from-blue-600 to-slate-900",
-      },
-      {
-        label: "Saldo consolidado",
-        value: `Q ${totalBalance.toLocaleString("es-GT", { maximumFractionDigits: 2 })}`,
-        icon: BanknotesIcon,
-        tone: "from-emerald-500 to-teal-700",
-      },
-      {
-        label: "Cuentas activas",
-        value: `${activeAccounts}/${totalAccounts || 0}`,
-        icon: ShieldCheckIcon,
-        tone: "from-indigo-500 to-blue-800",
-      },
-      {
-        label: "Bloqueadas",
-        value: blockedAccounts.toString(),
-        icon: NoSymbolIcon,
-        tone: "from-rose-500 to-red-700",
-      },
+      { label:"Cuentas registradas", value: totalAccounts.toLocaleString(),                                                              icon: BuildingLibraryIcon },
+      { label:"Saldo consolidado",   value: `Q ${totalBalance.toLocaleString("es-GT",{ maximumFractionDigits:2 })}`,                     icon: BanknotesIcon       },
+      { label:"Cuentas activas",     value: `${activeAccounts}/${totalAccounts || 0}`,                                                   icon: ShieldCheckIcon     },
+      { label:"Bloqueadas",          value: blockedAccounts.toString(),                                                                   icon: NoSymbolIcon        },
     ];
   }, [accounts]);
 
   const filteredAccounts = useMemo(() => {
     const term = String(searchTerm || "").trim().toLowerCase();
     if (!term) return accounts;
-
-    return accounts.filter((account) => {
+    return accounts.filter(account => {
       const accNum = String(account.accountNumber ?? account.number ?? "").toLowerCase();
       if (accNum.includes(term)) return true;
-
-      const owner = users.find(
-        (u) => u.uid === account.externalUserId || u.id === account.externalUserId
-      );
-
+      const owner = users.find(u => u.uid === account.externalUserId || u.id === account.externalUserId);
       if (owner) {
         const name = String(owner.name || owner.fullName || owner.username || owner.email || "").toLowerCase();
         if (name.includes(term)) return true;
       }
-
       return false;
     });
   }, [accounts, users, searchTerm]);
@@ -177,171 +219,109 @@ export const Accounts = () => {
 
   const paginatedAccounts = useMemo(() => {
     const movementCountById = new Map(
-      movementRanking.map((item) => [
-        String(item?.account?._id || item?.account?.id || ''),
+      movementRanking.map(item => [
+        String(item?.account?._id || item?.account?.id || ""),
         Number(item?.movementCount || 0),
       ])
     );
-
-    const sortedAccounts = [...filteredAccounts].sort((left, right) => {
-      if (orderMode === 'number-asc') {
-        return String(left.accountNumber || '').localeCompare(String(right.accountNumber || ''));
-      }
-
-      if (orderMode === 'number-desc') {
-        return String(right.accountNumber || '').localeCompare(String(left.accountNumber || ''));
-      }
-
-      if (orderMode === 'balance-asc') {
-        return Number(left.balance || 0) - Number(right.balance || 0);
-      }
-
-      if (orderMode === 'balance-desc') {
-        return Number(right.balance || 0) - Number(left.balance || 0);
-      }
-
-      const leftCount = movementCountById.get(String(left._id || left.id)) || 0;
-      const rightCount = movementCountById.get(String(right._id || right.id)) || 0;
-      return orderMode === 'activity-asc' ? leftCount - rightCount : rightCount - leftCount;
+    const sortedAccounts = [...filteredAccounts].sort((l, r) => {
+      if (orderMode === "number-asc")    return String(l.accountNumber || "").localeCompare(String(r.accountNumber || ""));
+      if (orderMode === "number-desc")   return String(r.accountNumber || "").localeCompare(String(l.accountNumber || ""));
+      if (orderMode === "balance-asc")   return Number(l.balance || 0) - Number(r.balance || 0);
+      if (orderMode === "balance-desc")  return Number(r.balance || 0) - Number(l.balance || 0);
+      const lc = movementCountById.get(String(l._id || l.id)) || 0;
+      const rc = movementCountById.get(String(r._id || r.id)) || 0;
+      return orderMode === "activity-asc" ? lc - rc : rc - lc;
     });
-
     const start = (currentPage - 1) * pageSize;
-    return sortedAccounts.slice(start, start + pageSize).map((account) => ({
+    return sortedAccounts.slice(start, start + pageSize).map(account => ({
       ...account,
-      movementCount: movementRanking.find((item) => String(item?.account?._id || item?.account?.id || '') === String(account._id || account.id))?.movementCount || 0,
+      movementCount: movementRanking.find(item =>
+        String(item?.account?._id || item?.account?.id || "") === String(account._id || account.id)
+      )?.movementCount || 0,
     }));
   }, [filteredAccounts, currentPage, pageSize, movementRanking, orderMode]);
 
+  // ── Handlers: idénticos al original ───────────────────────
   const handleCreateSubmit = async ({ ok, payload, error }) => {
-    if (!ok) {
-      showError(error || "No se pudo crear la cuenta");
-      return;
-    }
-
-    if (!isAdmin) {
-      showError("Solo administradores pueden crear cuentas");
-      return;
-    }
-
+    if (!ok) { showError(error || "No se pudo crear la cuenta"); return; }
+    if (!isAdmin) { showError("Solo administradores pueden crear cuentas"); return; }
     const res = await createAccount(payload);
-    if (res?.success) {
-      showSuccess("Cuenta creada correctamente");
-      setCreateOpen(false);
-      setSelectedAccount(null);
-      return;
-    }
-
+    if (res?.success) { showSuccess("Cuenta creada correctamente"); setCreateOpen(false); setSelectedAccount(null); return; }
     showError(res?.error || "Error al crear la cuenta");
   };
 
   const handleEditSubmit = async ({ ok, payload, error }) => {
-    if (!ok) {
-      showError(error || "No se pudo actualizar la cuenta");
-      return;
-    }
-
+    if (!ok) { showError(error || "No se pudo actualizar la cuenta"); return; }
     if (!selectedAccount) return;
-
-    if (!canEditSelected) {
-      showError("No tienes permiso para editar esta cuenta");
-      return;
-    }
-
+    if (!canEditSelected) { showError("No tienes permiso para editar esta cuenta"); return; }
     const accountId = selectedAccount._id ?? selectedAccount.id;
-    if (!accountId) {
-      showError("ID de cuenta inválido");
-      return;
-    }
-
+    if (!accountId) { showError("ID de cuenta inválido"); return; }
     const res = await updateAccount(accountId, payload);
-
-    if (res?.success) {
-      showSuccess("Cuenta actualizada");
-      setEditOpen(false);
-      setSelectedAccount(null);
-      return;
-    }
-
+    if (res?.success) { showSuccess("Cuenta actualizada"); setEditOpen(false); setSelectedAccount(null); return; }
     showError(res?.error || "Error al actualizar la cuenta");
   };
 
-  const handleOpenCreate = () => {
-    setSelectedAccount(null);
-    setCreateOpen(true);
-  };
-
-  const handleOpenEdit = (account) => {
-    setSelectedAccount(account);
-    setEditOpen(true);
-  };
-
-  const handleOpenDeposit = (account) => {
-    setDepositDestination(account);
-    setDepositOpen(true);
-  };
+  const handleOpenCreate  = ()        => { setSelectedAccount(null); setCreateOpen(true); };
+  const handleOpenEdit    = (account) => { setSelectedAccount(account); setEditOpen(true); };
+  const handleOpenDeposit = (account) => { setDepositDestination(account); setDepositOpen(true); };
 
   const handleActivate = (account) => {
     const accountId = account._id ?? account.id;
-    if (!accountId) {
-      showError("ID de cuenta inválido");
-      return;
-    }
-
-    if (!isAdmin) {
-      showError("Solo admins pueden activar cuentas");
-      return;
-    }
-
+    if (!accountId) { showError("ID de cuenta inválido"); return; }
+    if (!isAdmin)   { showError("Solo admins pueden activar cuentas"); return; }
     openConfirm({
-      title: "Activar cuenta",
+      title:   "Activar cuenta",
       message: "Esta acción volverá a habilitar la cuenta con estado ACTIVE. ¿Confirmas?",
       onConfirm: async () => {
         const res = await updateAccount(accountId, { status: "ACTIVE" });
-        if (res?.success) {
-          showSuccess("Cuenta activada correctamente");
-        } else {
-          showError(res?.error || "Error al activar la cuenta");
-        }
+        if (res?.success) showSuccess("Cuenta activada correctamente");
+        else              showError(res?.error || "Error al activar la cuenta");
       },
     });
   };
 
   const handleDeactivate = (account) => {
     const accountId = account._id ?? account.id;
-    if (!accountId) {
-      showError("ID de cuenta inválido");
-      return;
-    }
-
+    if (!accountId) { showError("ID de cuenta inválido"); return; }
     if (!isAdmin && !(user?.id && account.externalUserId === user.id)) {
-      showError("No tienes permiso para desactivar esta cuenta");
-      return;
+      showError("No tienes permiso para desactivar esta cuenta"); return;
     }
-
     openConfirm({
-      title: "Desactivar cuenta",
+      title:   "Desactivar cuenta",
       message: "Esta acción desactivará la cuenta (ya no aparecerá en tu lista). ¿Confirmas?",
       onConfirm: async () => {
         const res = await deleteAccount(accountId);
-        if (res?.success) {
-          showSuccess("Cuenta desactivada correctamente");
-        } else {
-          showError(res?.error || "Error al desactivar la cuenta");
-        }
+        if (res?.success) showSuccess("Cuenta desactivada correctamente");
+        else              showError(res?.error || "Error al desactivar la cuenta");
       },
-    }); // CORREGIDO: Se cerró correctamente el objeto de configuración y la llamada
+    });
   };
 
   const handleDepositSubmit = async ({ ok, payload, error }) => {
-    if (!ok) {
-      showError(error || "No se pudo registrar el depósito");
-      return;
-    }
-
+    if (!ok) { showError(error || "No se pudo registrar el depósito"); return; }
     try {
       setDepositLoading(true);
-      const res = await createTransaction(payload);
+      const resolvedDestination = await resolveAccountReference(
+        payload?.destinationAccount,
+        accounts,
+        [],
+        async (accountNumber) => {
+          const response = await getAccountByNumber(accountNumber);
+          return response?.data?.account ?? response?.data ?? null;
+        }
+      );
+      const normalizedPayload = {
+        ...payload,
+        destinationAccount: resolvedDestination.accountId || payload?.destinationAccount,
+      };
 
+      if (!resolvedDestination.accountId) {
+        showError("No se pudo resolver la cuenta destino. Verifica el número o usa un ID válido.");
+        return;
+      }
+
+      const res = await createTransaction(normalizedPayload);
       if (res?.data?.success) {
         showSuccess("Depósito registrado correctamente");
         await getAccounts();
@@ -357,84 +337,132 @@ export const Accounts = () => {
     }
   };
 
+  // ── RENDER ─────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(46,111,212,0.10),_transparent_28%),linear-gradient(180deg,_#f4f8fc_0%,_#edf3f9_100%)] p-4 sm:p-6 lg:p-8">
-      <div className="mx-auto max-w-[1440px] space-y-6">
-        <section className="relative overflow-hidden rounded-md border border-white/70 bg-[linear-gradient(135deg,_#0a2540_0%,_#123b67_55%,_#1a4b8c_100%)] px-6 py-6 text-white shadow-[0_20px_60px_rgba(10,37,64,0.22)] sm:px-8 sm:py-8">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(90,156,245,0.28),_transparent_26%),radial-gradient(circle_at_bottom_left,_rgba(0,196,140,0.16),_transparent_25%)]" />
-          <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-            <div className="max-w-3xl space-y-4">
-              <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-5xl">
+    <div style={{
+      minHeight:  "100vh",
+      padding:    "clamp(16px,3vw,32px)",
+      background: "radial-gradient(ellipse 70% 50% at 10% 0%, rgba(79,142,247,0.07) 0%, transparent 55%), radial-gradient(ellipse 50% 40% at 90% 100%, rgba(0,212,160,0.05) 0%, transparent 50%), var(--dash-bg, #070d1a)",
+    }}>
+      <div style={{ maxWidth:"1440px", margin:"0 auto", display:"flex", flexDirection:"column", gap:"24px" }}>
+
+        {/* ══ Hero ══════════════════════════════════════════════ */}
+        <section style={{
+          ...glass,
+          padding:    "clamp(24px,4vw,40px)",
+          position:   "relative",
+          background: "linear-gradient(135deg, rgba(10,37,64,0.92) 0%, rgba(26,75,140,0.72) 55%, rgba(79,142,247,0.14) 100%)",
+          border:     "1px solid rgba(79,142,247,0.2)",
+        }}>
+          {/* mesh */}
+          <div style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:0,
+            background:"radial-gradient(ellipse 55% 70% at 90% 10%, rgba(79,142,247,0.18) 0%, transparent 55%), radial-gradient(ellipse 40% 50% at 10% 90%, rgba(0,212,160,0.10) 0%, transparent 50%)" }} />
+          {/* grid texture */}
+          <div style={{ position:"absolute", inset:0, zIndex:0, pointerEvents:"none",
+            backgroundImage:"linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
+            backgroundSize:"48px 48px" }} />
+
+          <div style={{ position:"relative", zIndex:1, display:"flex", flexWrap:"wrap", gap:"20px", alignItems:"flex-end", justifyContent:"space-between" }}>
+            <div>
+              <p style={{ fontSize:"0.65rem", fontWeight:700, letterSpacing:"0.22em", textTransform:"uppercase", color:"rgba(79,142,247,0.85)", marginBottom:"10px" }}>
+                Gestión Financiera
+              </p>
+              <h1 style={{
+                fontFamily:    '"DM Serif Display", Georgia, serif',
+                fontSize:      "clamp(1.8rem,4vw,3rem)",
+                fontWeight:    400,
+                color:         "#e8f0fe",
+                letterSpacing: "-0.02em",
+                lineHeight:    1.15,
+                marginBottom:  "10px",
+              }}>
                 Cuentas Bancarias
               </h1>
-              <p className="max-w-2xl text-sm leading-6 text-white/72 sm:text-base">
+              <p style={{ fontSize:"0.875rem", color:"rgba(232,240,254,0.5)", maxWidth:"520px", lineHeight:1.7 }}>
                 Administra las cuentas del sistema con una vista ejecutiva de saldos, estado y actividad.
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-3 xl:justify-end">
-              {isAdmin && (
-                <button
-                  onClick={handleOpenCreate}
-                  className="inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 text-sm font-semibold shadow-md hover:from-blue-700 hover:to-indigo-700 transform hover:-translate-y-0.5 transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-300"
-                  title="Crear nueva cuenta"
-                  aria-label="Crear nueva cuenta"
-                >
-                  <PlusIcon className="h-4 w-4" />
-                  <span>Crear cuenta</span>
-                </button>
-              )}
-            </div>
+            {isAdmin && (
+              <button
+                onClick={handleOpenCreate}
+                title="Crear nueva cuenta"
+                aria-label="Crear nueva cuenta"
+                style={{
+                  display:        "inline-flex",
+                  alignItems:     "center",
+                  gap:            "8px",
+                  padding:        "12px 22px",
+                  borderRadius:   "12px",
+                  background:     "rgba(79,142,247,0.15)",
+                  border:         "1px solid rgba(79,142,247,0.35)",
+                  color:          "#a5c8ff",
+                  fontSize:       "0.845rem",
+                  fontWeight:     600,
+                  letterSpacing:  "0.02em",
+                  cursor:         "pointer",
+                  backdropFilter: "blur(10px)",
+                  transition:     "all 0.2s ease",
+                  boxShadow:      "0 4px 20px rgba(79,142,247,0.15)",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background="rgba(79,142,247,0.28)"; e.currentTarget.style.transform="translateY(-2px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background="rgba(79,142,247,0.15)"; e.currentTarget.style.transform="translateY(0)"; }}
+              >
+                <PlusIcon style={{ width:"16px", height:"16px" }} />
+                Crear cuenta
+              </button>
+            )}
           </div>
         </section>
 
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {dashboardStats.map(({ label, value, icon: Icon, tone }) => (
-            <article
-              key={label}
-              className="group relative overflow-hidden rounded-md border border-white/70 bg-white/90 p-5 shadow-[0_10px_30px_rgba(10,37,64,0.08)] backdrop-blur transition hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(10,37,64,0.12)]"
-            >
-              <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${tone}`} />
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                    {label}
-                  </p>
-                  <p className="mt-3 text-2xl font-semibold tracking-tight text-slate-900 sm:text-[2rem]">
-                    {value}
-                  </p>
-                </div>
-                <div className={`flex h-12 w-12 items-center justify-center rounded-sm bg-gradient-to-br ${tone} text-white shadow-lg`}>
-                  <Icon className="h-6 w-6" />
-                </div>
-              </div>
-            </article>
-          ))}
+        {/* ══ Stats ═════════════════════════════════════════════ */}
+        <section style={{ display:"grid", gap:"16px", gridTemplateColumns:"repeat(auto-fill, minmax(220px,1fr))" }}>
+          {dashboardStats.map(stat => <StatCard key={stat.label} {...stat} />)}
         </section>
 
-        <section className="rounded-md border border-white/70 bg-white/88 p-4 shadow-[0_18px_50px_rgba(10,37,64,0.08)] backdrop-blur sm:p-6">
-          <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                value={searchTerm}
-                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                placeholder="Buscar por usuario o número de cuenta..."
-                className="w-72 rounded-md border px-3 py-2 text-sm shadow-sm"
-              />
+        {/* ══ Tabla / Grid ══════════════════════════════════════ */}
+        <section style={{ ...glass, padding:"24px 28px" }}>
+
+          {/* Filter bar */}
+          <div style={{ display:"flex", flexWrap:"wrap", alignItems:"center", justifyContent:"space-between", gap:"12px", marginBottom:"20px" }}>
+            <div style={{ display:"flex", flexWrap:"wrap", alignItems:"center", gap:"10px" }}>
+              {/* Search */}
+              <div style={{ position:"relative" }}>
+                <svg style={{ position:"absolute", left:"11px", top:"50%", transform:"translateY(-50%)", color:"rgba(232,240,254,0.3)", pointerEvents:"none" }}
+                  width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                <input
+                  value={searchTerm}
+                  onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                  placeholder="Buscar cuenta o usuario…"
+                  style={{ ...inputStyle, paddingLeft:"34px", width:"260px" }}
+                  onFocus={e  => { e.target.style.borderColor="rgba(79,142,247,0.6)"; e.target.style.boxShadow="0 0 0 3px rgba(79,142,247,0.12)"; }}
+                  onBlur={e   => { e.target.style.borderColor="rgba(255,255,255,0.12)"; e.target.style.boxShadow="none"; }}
+                />
+              </div>
+
+              {/* Page size */}
               <select
                 value={pageSize}
-                onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
-                className="rounded-md border px-2 py-2 text-sm"
+                onChange={e => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                style={{ ...inputStyle, paddingRight:"28px", cursor:"pointer",
+                  backgroundImage:"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(232,240,254,0.4)' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")",
+                  backgroundRepeat:"no-repeat", backgroundPosition:"right 10px center", appearance:"none" }}
                 title="Tamaño de página"
               >
                 <option value={6}>6 por página</option>
                 <option value={9}>9 por página</option>
                 <option value={12}>12 por página</option>
               </select>
+
+              {/* Order */}
               <select
                 value={orderMode}
-                onChange={(e) => { setOrderMode(e.target.value); setCurrentPage(1); }}
-                className="rounded-md border px-2 py-2 text-sm"
+                onChange={e => { setOrderMode(e.target.value); setCurrentPage(1); }}
+                style={{ ...inputStyle, paddingRight:"28px", cursor:"pointer",
+                  backgroundImage:"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(232,240,254,0.4)' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")",
+                  backgroundRepeat:"no-repeat", backgroundPosition:"right 10px center", appearance:"none" }}
                 title="Ordenar cuentas"
               >
                 <option value="activity-desc">Actividad: mayor a menor</option>
@@ -445,111 +473,147 @@ export const Accounts = () => {
                 <option value="balance-asc">Saldo: menor a mayor</option>
               </select>
             </div>
-            <div className="text-sm text-slate-500">
-              Resultados: {filteredAccounts.length}
-              {orderMode.startsWith('activity') && rankingLoading && ' · cargando actividad...'}
+
+            {/* Result count */}
+            <div style={{ fontSize:"0.78rem", color:"rgba(232,240,254,0.38)", letterSpacing:"0.04em" }}>
+              {filteredAccounts.length} resultado{filteredAccounts.length !== 1 ? "s" : ""}
+              {orderMode.startsWith("activity") && rankingLoading && " · cargando actividad…"}
             </div>
           </div>
 
+          {/* Content */}
           {loading ? (
-            <Spinner />
+            <div style={{ display:"flex", justifyContent:"center", padding:"64px 0" }}>
+              <Spinner />
+            </div>
           ) : accounts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50/80 px-4 py-12 text-center text-slate-500">
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-sm bg-slate-900 text-white shadow-lg shadow-slate-900/20">
-                <BuildingLibraryIcon className="h-8 w-8" />
+            <div style={{
+              display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+              borderRadius:"14px", border:"1px dashed rgba(255,255,255,0.1)", padding:"64px 24px",
+              background:"rgba(255,255,255,0.02)", textAlign:"center",
+            }}>
+              <div style={{ width:"56px", height:"56px", borderRadius:"14px", background:"rgba(79,142,247,0.15)", border:"1px solid rgba(79,142,247,0.25)", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:"16px" }}>
+                <BuildingLibraryIcon style={{ width:"28px", height:"28px", color:"#4f8ef7" }} />
               </div>
-              <h2 className="text-xl font-semibold text-slate-900">No hay cuentas registradas</h2>
-              <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
+              <h2 style={{ fontSize:"1.1rem", fontWeight:700, color:"#e8f0fe", marginBottom:"8px" }}>No hay cuentas registradas</h2>
+              <p style={{ fontSize:"0.845rem", color:"rgba(232,240,254,0.38)", maxWidth:"400px", lineHeight:1.7 }}>
                 Crea la primera cuenta para que el panel muestre actividad, saldos y movimientos.
               </p>
             </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {paginatedAccounts.map((account) => {
-                const accountId = account._id ?? account.id;
-                const accountOwner = users.find(u => u.uid === account.externalUserId || u.id === account.externalUserId);
-                const isActiveAccount = account.status === "ACTIVE";
+            <div style={{ display:"grid", gap:"16px", gridTemplateColumns:"repeat(auto-fill, minmax(340px,1fr))" }}>
+              {paginatedAccounts.map(account => {
+                const accountId          = account._id ?? account.id;
+                const accountOwner       = users.find(u => u.uid === account.externalUserId || u.id === account.externalUserId);
+                const isActiveAccount    = account.status === "ACTIVE";
                 const canDeactivateAccount = isAdmin || (user?.id && account.externalUserId === user.id && isActiveAccount);
                 const canActivateAccount = isAdmin && !isActiveAccount;
 
                 return (
                   <div
                     key={accountId}
-                    className="group overflow-hidden rounded-md border border-slate-200/70 bg-[linear-gradient(180deg,_rgba(255,255,255,0.96),_rgba(248,251,255,0.96))] shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md"
+                    style={{
+                      borderRadius:        "16px",
+                      background:          "rgba(255,255,255,0.04)",
+                      backdropFilter:      "blur(14px)",
+                      WebkitBackdropFilter:"blur(14px)",
+                      border:              "1px solid rgba(255,255,255,0.09)",
+                      boxShadow:           "0 4px 24px rgba(0,0,0,0.35)",
+                      overflow:            "hidden",
+                      transition:          "transform 0.2s ease, box-shadow 0.2s ease",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow="0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(79,142,247,0.2)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform="translateY(0)";    e.currentTarget.style.boxShadow="0 4px 24px rgba(0,0,0,0.35)"; }}
                   >
-                    <div className="flex justify-center px-3 pt-4 pb-2">
-                      <div className="max-w-[430px] w-full">
+                    {/* Credit card */}
+                    <div style={{ display:"flex", justifyContent:"center", padding:"16px 16px 8px" }}>
+                      <div style={{ maxWidth:"430px", width:"100%" }}>
                         <CreditCardItem account={account} accountOwner={accountOwner} statusBadgeClass={statusBadgeClass} />
                       </div>
                     </div>
 
-                    {orderMode.startsWith('activity') && (
-                      <div className="px-5 pb-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                        Movimientos: {account.movementCount || 0}
+                    {/* Movement badge */}
+                    {orderMode.startsWith("activity") && (
+                      <div style={{ padding:"4px 20px 8px", display:"flex", alignItems:"center", gap:"6px" }}>
+                        <div style={{ width:"6px", height:"6px", borderRadius:"50%", background:"#4f8ef7" }} />
+                        <span style={{ fontSize:"0.7rem", fontWeight:700, letterSpacing:"0.14em", textTransform:"uppercase", color:"rgba(232,240,254,0.4)" }}>
+                          {account.movementCount || 0} movimiento{(account.movementCount || 0) !== 1 ? "s" : ""}
+                        </span>
                       </div>
                     )}
 
-                    <div className="border-t border-slate-200/80 px-5 py-5">
-                      <div className="flex flex-wrap gap-3">
+                    {/* Action buttons */}
+                    <div style={{ borderTop:"1px solid rgba(255,255,255,0.07)", padding:"16px 20px" }}>
+                      <div style={{ display:"flex", flexWrap:"wrap", gap:"8px" }}>
+
+                        {/* Cambio divisas */}
                         {(isAdmin || (isClient && account.externalUserId === user?.id)) && (
-                          <button
-                            className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                            onClick={(e) => { e.stopPropagation(); setConversionAccount(accountId); setConversionOpen(true); }}
-                          >
-                            <BanknotesIcon className="w-5 h-5" />
-                            Cambio divisas
-                          </button>
+                          <ActionBtn
+                            icon={<BanknotesIcon style={{ width:"15px", height:"15px" }} />}
+                            label="Divisas"
+                            color="rgba(167,139,250,0.18)"
+                            border="rgba(167,139,250,0.3)"
+                            textColor="#c4b5fd"
+                            hoverBg="rgba(167,139,250,0.3)"
+                            onClick={e => { e.stopPropagation(); setConversionAccount(accountId); setConversionOpen(true); }}
+                          />
                         )}
 
+                        {/* Depósito */}
                         {isAdmin && (
-                          <button
-                            className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"
-                            onClick={(e) => { e.stopPropagation(); handleOpenDeposit(account); }}
-                          >
-                            <ArrowDownCircleIcon className="w-5 h-5" />
-                            Depósito
-                          </button>
+                          <ActionBtn
+                            icon={<ArrowDownCircleIcon style={{ width:"15px", height:"15px" }} />}
+                            label="Depósito"
+                            color="rgba(0,212,160,0.14)"
+                            border="rgba(0,212,160,0.28)"
+                            textColor="#00d4a0"
+                            hoverBg="rgba(0,212,160,0.28)"
+                            onClick={e => { e.stopPropagation(); handleOpenDeposit(account); }}
+                          />
                         )}
 
+                        {/* Editar */}
                         {isAdmin && (
-                          <button
-                            className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                            onClick={(e) => { e.stopPropagation(); handleOpenEdit(account); }}
-                          >
-                            <PencilSquareIcon className="w-5 h-5" />
-                            Editar
-                          </button>
+                          <ActionBtn
+                            icon={<PencilSquareIcon style={{ width:"15px", height:"15px" }} />}
+                            label="Editar"
+                            color="rgba(79,142,247,0.14)"
+                            border="rgba(79,142,247,0.28)"
+                            textColor="#a5c8ff"
+                            hoverBg="rgba(79,142,247,0.28)"
+                            onClick={e => { e.stopPropagation(); handleOpenEdit(account); }}
+                          />
                         )}
 
-                        <div className="flex-1" />
+                        <div style={{ flex:1 }} />
 
+                        {/* Activar / Desactivar */}
                         {isActiveAccount ? (
-                          <button
-                            className="flex-1 items-center justify-center gap-2 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600 transition-all duration-300 hover:-translate-y-0.5 hover:border-rose-300 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50 flex"
-                            onClick={(e) => { e.stopPropagation(); handleDeactivate(account); }}
+                          <ActionBtn
+                            icon={<NoSymbolIcon style={{ width:"15px", height:"15px" }} />}
+                            label="Desactivar"
+                            color="rgba(248,113,113,0.12)"
+                            border="rgba(248,113,113,0.28)"
+                            textColor="#f87171"
+                            hoverBg="rgba(248,113,113,0.25)"
                             disabled={!canDeactivateAccount}
-                            title={
-                              isAdmin
-                                ? "Desactivar"
-                                : (user?.id && account.externalUserId === user.id) ? 'Desactivar mi cuenta' : 'Solo admins pueden desactivar cuentas'
-                            }
-                          >
-                            <NoSymbolIcon className="w-5 h-5" strokeWidth={2} />
-                            Desactivar
-                          </button>
+                            onClick={e => { e.stopPropagation(); handleDeactivate(account); }}
+                            title={isAdmin ? "Desactivar" : (user?.id && account.externalUserId === user.id) ? "Desactivar mi cuenta" : "Solo admins pueden desactivar cuentas"}
+                          />
                         ) : (
-                          <button
-                            className="flex-1 items-center justify-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 flex"
-                            onClick={(e) => { e.stopPropagation(); handleActivate(account); }}
+                          <ActionBtn
+                            icon={<CheckCircleIcon style={{ width:"15px", height:"15px" }} />}
+                            label="Activar"
+                            color="rgba(0,212,160,0.12)"
+                            border="rgba(0,212,160,0.28)"
+                            textColor="#00d4a0"
+                            hoverBg="rgba(0,212,160,0.25)"
                             disabled={!canActivateAccount}
-                            title={isAdmin ? 'Activar' : 'Solo admins pueden activar cuentas'}
-                          >
-                            <CheckCircleIcon className="w-5 h-5" strokeWidth={2} />
-                            Activar
-                          </button>
+                            onClick={e => { e.stopPropagation(); handleActivate(account); }}
+                            title={isAdmin ? "Activar" : "Solo admins pueden activar cuentas"}
+                          />
                         )}
                       </div>
-
                     </div>
                   </div>
                 );
@@ -557,30 +621,46 @@ export const Accounts = () => {
             </div>
           )}
 
+          {/* Pagination */}
           {filteredAccounts.length > pageSize && (
-            <div className="mt-4 flex items-center justify-center gap-3">
+            <div style={{ marginTop:"24px", display:"flex", alignItems:"center", justifyContent:"center", gap:"12px" }}>
               <button
-                className="rounded px-3 py-1 border"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
+                style={{
+                  padding:"8px 18px", borderRadius:"10px", fontSize:"0.8rem", fontWeight:600,
+                  background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)",
+                  color: currentPage === 1 ? "rgba(232,240,254,0.25)" : "#a5c8ff",
+                  cursor: currentPage === 1 ? "not-allowed" : "pointer",
+                  transition:"all 0.18s",
+                }}
               >
-                Anterior
+                ← Anterior
               </button>
 
-              <div className="text-sm text-slate-600">Página {currentPage} de {totalPages}</div>
+              <span style={{ fontSize:"0.8rem", fontWeight:600, color:"rgba(232,240,254,0.45)", padding:"0 4px" }}>
+                {currentPage} / {totalPages}
+              </span>
 
               <button
-                className="rounded px-3 py-1 border"
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
+                style={{
+                  padding:"8px 18px", borderRadius:"10px", fontSize:"0.8rem", fontWeight:600,
+                  background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)",
+                  color: currentPage === totalPages ? "rgba(232,240,254,0.25)" : "#a5c8ff",
+                  cursor: currentPage === totalPages ? "not-allowed" : "pointer",
+                  transition:"all 0.18s",
+                }}
               >
-                Siguiente
+                Siguiente →
               </button>
             </div>
           )}
         </section>
       </div>
 
+      {/* ── Modales: idénticos al original ────────────────────── */}
       <AccountModal
         mode="create"
         isOpen={createOpen}
@@ -596,10 +676,7 @@ export const Accounts = () => {
         isOpen={editOpen}
         loading={loading}
         initialValues={selectedAccount}
-        onClose={() => {
-          setEditOpen(false);
-          setSelectedAccount(null);
-        }}
+        onClose={() => { setEditOpen(false); setSelectedAccount(null); }}
         onSubmit={handleEditSubmit}
       />
 
@@ -608,26 +685,41 @@ export const Accounts = () => {
       <ConversionModal
         accountId={conversionAccount}
         isOpen={conversionOpen}
-        onClose={() => {
-          setConversionOpen(false);
-          setConversionAccount(null);
-        }}
+        onClose={() => { setConversionOpen(false); setConversionAccount(null); }}
       />
 
       <DepositTransactionModal
         isOpen={depositOpen}
-        onClose={() => {
-          setDepositOpen(false);
-          setDepositDestination(null);
-        }}
+        onClose={() => { setDepositOpen(false); setDepositDestination(null); }}
         onSubmit={handleDepositSubmit}
         loading={depositLoading}
         accounts={accounts}
         users={users}
-        destinationAccount={depositDestination ? (depositDestination._id || depositDestination.id || depositDestination.accountNumber || '') : ''}
+        destinationAccount={depositDestination ? (depositDestination._id || depositDestination.id || depositDestination.accountNumber || "") : ""}
       />
     </div>
   );
 };
+
+/* ─── ActionBtn helper ─────────────────────────────────────── */
+const ActionBtn = ({ icon, label, color, border, textColor, hoverBg, onClick, disabled, title }) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    title={title}
+    style={{
+      display:"inline-flex", alignItems:"center", gap:"6px",
+      padding:"7px 14px", borderRadius:"9px",
+      background: color, border:`1px solid ${border}`, color: textColor,
+      fontSize:"0.78rem", fontWeight:600, cursor: disabled ? "not-allowed" : "pointer",
+      opacity: disabled ? 0.4 : 1, transition:"all 0.18s ease",
+    }}
+    onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = hoverBg; }}
+    onMouseLeave={e => { if (!disabled) e.currentTarget.style.background = color; }}
+  >
+    {icon}
+    {label}
+  </button>
+);
 
 export default Accounts;

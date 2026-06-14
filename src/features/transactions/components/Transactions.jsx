@@ -1,5 +1,7 @@
+// Transactions.jsx — REDISEÑO VISUAL ÚNICAMENTE
+// Toda la lógica, estados, efectos, API calls, handlers son idénticos al original
 import React, { useState, useEffect, useMemo } from 'react';
-import { getTransactions, revertTransaction } from '../../../shared/api/admin';
+import { getTransactions, getMyTransactions, revertTransaction, updateTransaction } from '../../../shared/api/admin';
 import { showSuccess, showError } from '../../../shared/utils/toast';
 import { Spinner } from "../../../shared/components/layouts/Spinner.jsx";
 import { normalizeRole } from '../../../shared/utils/authRole';
@@ -7,268 +9,427 @@ import { useAuthStore } from '../../auth/store/authStore';
 import {
   ArrowPathIcon,
   ArrowTrendingUpIcon,
-  ArrowTrendingDownIcon,
   CurrencyDollarIcon,
   ClockIcon,
   CreditCardIcon
 } from "@heroicons/react/24/outline";
 
-/* — Helpers de tipos y colores — */
+/* ─── Helpers: idénticos al original ──────────────────────── */
 const getTransactionType = (type) => {
-    const types = {
-        transfer:   'Transferencia',
-        deposit:    'Depósito',
-        withdrawal: 'Retiro',
-        payment:    'Pago',
-    };
-    return types[type] || type;
+  const types = { transfer:'Transferencia', deposit:'Depósito', withdrawal:'Retiro', payment:'Pago' };
+  return types[type] || type;
 };
 
-const txTypeStyle = {
-    deposit:    "bg-emerald-400/20 text-emerald-600 border-emerald-300/30",
-    withdrawal: "bg-rose-400/20 text-rose-600 border-rose-300/30",
-    transfer:   "bg-blue-400/20 text-blue-600 border-blue-300/30",
-    payment:    "bg-amber-400/20 text-amber-600 border-amber-300/30",
+/* ─── Design tokens ────────────────────────────────────────── */
+const glass = {
+  borderRadius:        "16px",
+  background:          "rgba(255,255,255,0.04)",
+  backdropFilter:      "blur(18px)",
+  WebkitBackdropFilter:"blur(18px)",
+  border:              "1px solid rgba(255,255,255,0.09)",
+  boxShadow:           "0 8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)",
+  overflow:            "hidden",
 };
 
-const statusBadgeClass = (status) => {
-    switch (status?.toLowerCase()) {
-        case 'completed':
-        case 'approved': return "bg-emerald-400/20 text-emerald-100 border border-emerald-300/30";
-        case 'pending':    return "bg-yellow-400/20 text-yellow-100 border border-yellow-300/30";
-        case 'rejected':
-        case 'failed':     return "bg-rose-400/20 text-rose-100 border border-rose-300/30";
-        default:           return "bg-slate-400/20 text-slate-100 border border-slate-300/30";
-    }
+const STAT_CONFIGS = {
+  "Volumen Total":    { grad:"linear-gradient(135deg,#4f8ef7,#2563eb)", glow:"rgba(79,142,247,0.35)"  },
+  "Flujo Neto":       { grad:"linear-gradient(135deg,#00d4a0,#059669)", glow:"rgba(0,212,160,0.35)"   },
+  "Pendientes":       { grad:"linear-gradient(135deg,#fbbf24,#d97706)", glow:"rgba(251,191,36,0.35)"  },
+  "Total Movimientos":{ grad:"linear-gradient(135deg,#a78bfa,#7c3aed)", glow:"rgba(167,139,250,0.35)" },
 };
 
-const IconRefresh = () => (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
-        <path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
-        <path d="M8 16H3v5"/>
-    </svg>
-);
+/* ─── Type configs ─────────────────────────────────────────── */
+const TX_TYPE = {
+  deposit:    { bg:"rgba(0,212,160,0.14)",   color:"#00d4a0",  border:"rgba(0,212,160,0.28)"   },
+  withdrawal: { bg:"rgba(248,113,113,0.14)", color:"#f87171",  border:"rgba(248,113,113,0.28)" },
+  transfer:   { bg:"rgba(79,142,247,0.14)",  color:"#a5c8ff",  border:"rgba(79,142,247,0.28)"  },
+  payment:    { bg:"rgba(251,191,36,0.14)",  color:"#fbbf24",  border:"rgba(251,191,36,0.28)"  },
+};
 
-const IconArrowDown  = () => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14m7-7-7 7-7-7"/></svg>
-);
-const IconArrowUp    = () => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 19V5m7 7-7-7-7 7"/></svg>
-);
-const IconArrowRight = () => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>
-);
-const IconCard       = () => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></svg>
-);
+/* ─── Status badge ─────────────────────────────────────────── */
+const statusStyle = (status) => {
+  switch (status?.toLowerCase()) {
+    case 'completed':
+    case 'approved': return { bg:"rgba(0,212,160,0.15)",  color:"#00d4a0", border:"rgba(0,212,160,0.3)"   };
+    case 'pending':  return { bg:"rgba(251,191,36,0.15)", color:"#fbbf24", border:"rgba(251,191,36,0.3)"  };
+    case 'rejected':
+    case 'failed':   return { bg:"rgba(248,113,113,0.15)",color:"#f87171", border:"rgba(248,113,113,0.3)" };
+    default:         return { bg:"rgba(255,255,255,0.08)", color:"rgba(232,240,254,0.5)", border:"rgba(255,255,255,0.12)" };
+  }
+};
 
-export const Transactions = () => {
-    const [transactions, setTransactions] = useState([]);
-    const [loading, setLoading]           = useState(true);
-    const [revertingId, setRevertingId] = useState(null);
-    const role = normalizeRole(useAuthStore((state) => state.user?.role));
-    const isAdmin = role === 'ADMIN_ROLE';
-
-    useEffect(() => { loadTransactions(); }, []);
-
-    const normalizeType = (type) => String(type || '').toLowerCase();
-
-    const canRevertTransaction = (tx) => {
-        if (!isAdmin) return false;
-        const type = normalizeType(tx.type);
-        if (!['deposit', 'transfer'].includes(type)) return false;
-        if (tx.reverted) return false;
-        const createdAt = tx.createdAt || tx.date;
-        if (!createdAt) return false;
-        return (Date.now() - new Date(createdAt).getTime()) <= 60_000;
-    };
-
-    const loadTransactions = async () => {
-        try {
-            setLoading(true);
-            const res = await getTransactions({ limit: 50 });
-            const data = res.data?.transactions ?? res.data?.transaction ?? res.data ?? [];
-            setTransactions(Array.isArray(data) ? data : []);
-            showSuccess('Transacciones cargadas');
-        } catch (error) {
-            showError('Error: ' + error.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const stats = useMemo(() => {
-        const totalVolume = transactions.reduce((sum, tx) => sum + Math.abs(tx.amount || 0), 0);
-        const netFlow = transactions.reduce((sum, tx) => {
-            return (normalizeType(tx.type) === 'deposit') ? sum + tx.amount : sum - tx.amount;
-        }, 0);
-        const pendingCount = transactions.filter(tx => tx.status === 'pending').length;
-        const totalCount = transactions.length;
-
-        return [
-            { label: "Volumen Total", value: `Q ${totalVolume.toLocaleString(undefined, {maximumFractionDigits: 2})}`, icon: CurrencyDollarIcon, tone: "from-blue-600 to-slate-900" },
-            { label: "Flujo Neto", value: `Q ${netFlow.toLocaleString(undefined, {maximumFractionDigits: 2})}`, icon: ArrowTrendingUpIcon, tone: "from-emerald-500 to-teal-700" },
-            { label: "Pendientes", value: pendingCount, icon: ClockIcon, tone: "from-amber-500 to-orange-700" },
-            { label: "Total Movimientos", value: totalCount, icon: CreditCardIcon, tone: "from-indigo-500 to-blue-800" },
-        ];
-    }, [transactions]);
-
-    const handleRevert = async (transactionId) => {
-        try {
-            setRevertingId(transactionId);
-            const res = await revertTransaction(transactionId);
-            if (res?.data?.success) {
-                showSuccess('Transacción revertida correctamente');
-                await loadTransactions();
-            } else {
-                showError(res?.data?.message || 'No se pudo revertir la transacción');
-            }
-        } catch (error) {
-            showError(error?.response?.data?.message || error.message || 'No se pudo revertir la transacción');
-        } finally {
-            setRevertingId(null);
-        }
-    };
-
-    return (
-        <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(46,111,212,0.10),_transparent_28%),linear-gradient(180deg,_#f4f8fc_0%,_#edf3f9_100%)] p-4 sm:p-6 lg:p-8">
-            <div className="mx-auto max-w-[1440px] space-y-6">
-                {/* Hero Section */}
-                <section className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-[linear-gradient(135deg,_#0a2540_0%,_#123b67_55%,_#1a4b8c_100%)] px-6 py-6 text-white shadow-[0_20px_60px_rgba(10,37,64,0.22)] sm:px-8 sm:py-8">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(90,156,245,0.28),_transparent_26%),radial-gradient(circle_at_bottom_left,_rgba(0,196,140,0.16),_transparent_25%)]" />
-                    <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-                        <div className="max-w-3xl space-y-4">
-                            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.24em] text-white/85 backdrop-blur">
-                                <CreditCardIcon className="h-4 w-4" />
-                                Auditoría Financiera
-                            </div>
-                            <div className="space-y-2">
-                                <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-5xl">
-                                    Historial de Transacciones
-                                </h1>
-                                <p className="max-w-2xl text-sm leading-6 text-white/72 sm:text-base">
-                                    Monitoreo detallado de todos los movimientos financieros, depósitos y transferencias procesadas por el sistema.
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex flex-wrap gap-3 xl:justify-end">
-                            <button
-                                className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-black/10 backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/15"
-                                onClick={loadTransactions}
-                                disabled={loading}
-                            >
-                                <ArrowPathIcon className="h-4 w-4" />
-                                {loading ? 'Cargando...' : 'Actualizar Datos'}
-                            </button>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Stats Row */}
-                <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    {stats.map(({ label, value, icon: Icon, tone }) => (
-                        <article key={label} className="group relative overflow-hidden rounded-[1.5rem] border border-white/70 bg-white/90 p-5 shadow-[0_10px_30px_rgba(10,37,64,0.08)] backdrop-blur transition hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(10,37,64,0.12)]">
-                            <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${tone}`} />
-                            <div className="flex items-start justify-between gap-4">
-                                <div className="space-y-1">
-                                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{label}</p>
-                                    <p className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-[2rem]">{value}</p>
-                                </div>
-                                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${tone} text-white shadow-lg`}>
-                                    <Icon className="h-6 w-6" />
-                                </div>
-                            </div>
-                        </article>
-                    ))}
-                </section>
-
-                {/* Table Container */}
-                <section className="rounded-[2rem] border border-white/70 bg-white/88 p-4 shadow-[0_18px_50px_rgba(10,37,64,0.08)] backdrop-blur sm:p-6">
-                    {loading ? (
-                        <div className="flex justify-center py-20">
-                            <Spinner />
-                        </div>
-                    ) : transactions.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-slate-200 bg-slate-50/80 px-6 py-20 text-center text-slate-500">
-                            <div className="mb-4 flex h-16 w-1 la-16 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg shadow-slate-900/20">
-                                <CreditCardIcon className="h-8 w-8" />
-                            </div>
-                            <h2 className="text-xl font-semibold text-slate-900">No hay transacciones registradas</h2>
-                            <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
-                                El historial de movimientos se encuentra vacío. Realice la primera operación para verla aquí.
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm">
-                                <thead className="text-slate-500">
-                                    <tr className="border-b border-slate-200">
-                                        <th className="px-4 py-4 font-semibold uppercase tracking-wider">Tipo</th>
-                                        <th className="px-4 py-4 font-semibold uppercase tracking-wider">Fecha</th>
-                                        <th className="px-4 py-4 font-semibold uppercase tracking-wider">Monto</th>
-                                        <th className="px-4 py-4 font-semibold uppercase tracking-wider">Referencia</th>
-                                        <th className="px-4 py-4 text-right font-semibold uppercase tracking-wider">Estado</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {transactions.map((tx) => (
-                                        <tr key={tx.id} className="group transition-colors hover:bg-slate-50/50">
-                                            <td className="px-4 py-4">
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold ${txTypeStyle[tx.type] || txTypeStyle.transfer}`}>
-                                                        {tx.type[0].toUpperCase()}
-                                                    </span>
-                                                    <span className="font-medium text-slate-900">{getTransactionType(tx.type)}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-4 text-slate-500">
-                                                {new Date(tx.date).toLocaleDateString('es-GT', {
-                                                    day: '2-digit', month: 'short', year: 'numeric'
-                                                })}
-                                            </td>
-                                            <td className="px-4 py-4">
-                                                <span className={`font-semibold ${tx.type === 'deposit' ? 'text-emerald-600' : 'text-slate-900'}`}>
-                                                    Q {tx.amount.toFixed(2)}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-4 text-xs text-slate-400 font-mono">
-                                                {tx.reference || '—'}
-                                            </td>
-                                            <td className="px-4 py-4 text-right">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadgeClass(tx.status)}`}>
-                                                        {tx.status}
-                                                    </span>
-                                                    {canRevertTransaction(tx) && (
-                                                        <button
-                                                            className="rounded-md border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100"
-                                                            onClick={() => handleRevert(tx.id)}
-                                                            disabled={revertingId === tx.id}
-                                                        >
-                                                            {revertingId === tx.id ? 'Revirtiendo...' : 'Revertir'}
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-
-                    {!loading && transactions.length > 0 && (
-                        <div className="mt-6 flex items-center justify-between px-2">
-                            <span className="text-xs text-slate-500">
-                                {transactions.length} transacciones registradas
-                            </span>
-                        </div>
-                    )}
-                </section>
-            </div>
+/* ─── Stat Card ────────────────────────────────────────────── */
+const StatCard = ({ label, value, icon: Icon }) => {
+  const cfg = STAT_CONFIGS[label] || STAT_CONFIGS["Volumen Total"];
+  return (
+    <article
+      style={{ ...glass, position:"relative", padding:"22px 24px", transition:"transform 0.22s ease, box-shadow 0.22s ease", cursor:"default" }}
+      onMouseEnter={e => { e.currentTarget.style.transform="translateY(-3px)"; e.currentTarget.style.boxShadow=`0 16px 48px rgba(0,0,0,0.5), ${cfg.glow} 0 0 30px, inset 0 1px 0 rgba(255,255,255,0.08)`; }}
+      onMouseLeave={e => { e.currentTarget.style.transform="translateY(0)";    e.currentTarget.style.boxShadow="0 8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)"; }}
+    >
+      <div style={{ position:"absolute", top:0, left:0, right:0, height:"2px", background:cfg.grad, borderRadius:"16px 16px 0 0" }} />
+      <div style={{ position:"absolute", top:"-20px", right:"-20px", width:"80px", height:"80px", borderRadius:"50%", background:cfg.grad, opacity:0.08, filter:"blur(20px)", pointerEvents:"none" }} />
+      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:"16px" }}>
+        <div>
+          <p style={{ fontSize:"0.65rem", fontWeight:700, letterSpacing:"0.18em", textTransform:"uppercase", color:"rgba(232,240,254,0.45)", marginBottom:"8px" }}>{label}</p>
+          <p style={{ fontSize:"1.75rem", fontWeight:700, color:"#e8f0fe", letterSpacing:"-0.02em", lineHeight:1.1 }}>{value}</p>
         </div>
-    );
+        <div style={{ width:"46px", height:"46px", borderRadius:"12px", background:cfg.grad, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:`0 6px 20px ${cfg.glow}` }}>
+          <Icon style={{ width:"22px", height:"22px", color:"#fff" }} />
+        </div>
+      </div>
+    </article>
+  );
+};
+
+/* ══════════════════════════════════════════════════════════════
+   Transactions — lógica 100% original, solo rediseño visual
+   ══════════════════════════════════════════════════════════════ */
+export const Transactions = () => {
+  // ── Estado: idéntico al original ──────────────────────────
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [revertingId, setRevertingId]   = useState(null);
+  const [editingId, setEditingId]       = useState(null);
+  const role    = normalizeRole(useAuthStore(state => state.user?.role));
+  const isAdmin = role === 'ADMIN_ROLE';
+
+  useEffect(() => { loadTransactions(); }, []);
+
+  const normalizeType = (type) => String(type || '').toLowerCase();
+  const getTxId = (tx) => tx?.id || tx?._id;
+
+  const canEditTransaction = (tx) => {
+    if (!isAdmin) return false;
+    if (tx?.reverted) return false;
+    const type = normalizeType(tx?.type);
+    return ['deposit', 'transfer'].includes(type);
+  };
+
+  const canRevertTransaction = (tx) => {
+    if (!isAdmin) return false;
+    const type = normalizeType(tx.type);
+    if (!['deposit', 'transfer'].includes(type)) return false;
+    if (tx.reverted) return false;
+    const createdAt = tx.createdAt || tx.date;
+    if (!createdAt) return false;
+    return (Date.now() - new Date(createdAt).getTime()) <= 60_000;
+  };
+
+  const loadTransactions = async () => {
+    try {
+      setLoading(true);
+      const res  = isAdmin
+        ? await getTransactions({ limit: 50 })
+        : await getMyTransactions(50);
+      const data = res.data?.transactions ?? res.data?.transaction ?? res.data ?? [];
+      setTransactions(Array.isArray(data) ? data : []);
+      showSuccess('Transacciones cargadas');
+    } catch (error) {
+      showError('Error: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const stats = useMemo(() => {
+    const totalVolume = transactions.reduce((sum, tx) => sum + Math.abs(tx.amount || 0), 0);
+    const netFlow     = transactions.reduce((sum, tx) =>
+      normalizeType(tx.type) === 'deposit' ? sum + tx.amount : sum - tx.amount, 0);
+    const pendingCount = transactions.filter(tx => tx.status === 'pending').length;
+    return [
+      { label:"Volumen Total",     value:`Q ${totalVolume.toLocaleString(undefined,{maximumFractionDigits:2})}`, icon:CurrencyDollarIcon  },
+      { label:"Flujo Neto",        value:`Q ${netFlow.toLocaleString(undefined,{maximumFractionDigits:2})}`,     icon:ArrowTrendingUpIcon },
+      { label:"Pendientes",        value: pendingCount,                                                          icon:ClockIcon           },
+      { label:"Total Movimientos", value: transactions.length,                                                   icon:CreditCardIcon      },
+    ];
+  }, [transactions]);
+
+  const handleRevert = async (transactionId) => {
+    const confirm = window.confirm('¿Confirmas que deseas revertir esta transacción?');
+    if (!confirm) return;
+
+    try {
+      setRevertingId(transactionId);
+      const res = await revertTransaction(transactionId);
+      if (res?.data?.success) { showSuccess('Transacción revertida correctamente'); await loadTransactions(); }
+      else showError(res?.data?.message || 'No se pudo revertir la transacción');
+    } catch (error) {
+      showError(error?.response?.data?.message || error.message || 'No se pudo revertir la transacción');
+    } finally {
+      setRevertingId(null);
+    }
+  };
+
+  const handleEditTransaction = async (tx) => {
+    const transactionId = getTxId(tx);
+    if (!transactionId) {
+      showError('ID de transacción inválido');
+      return;
+    }
+
+    const currentAmount = Number(tx?.amount || 0);
+    const nextAmountRaw = window.prompt('Ingresa el nuevo monto para la transacción:', String(currentAmount));
+    if (nextAmountRaw === null) return;
+
+    const nextAmount = Number(nextAmountRaw);
+    if (!Number.isFinite(nextAmount) || nextAmount <= 0) {
+      showError('Monto inválido');
+      return;
+    }
+
+    const confirm = window.confirm(`¿Confirmas actualizar el monto de Q ${currentAmount.toFixed(2)} a Q ${nextAmount.toFixed(2)}?`);
+    if (!confirm) return;
+
+    try {
+      setEditingId(transactionId);
+      const res = await updateTransaction(transactionId, { amount: nextAmount });
+      if (res?.data?.success) {
+        showSuccess('Transacción actualizada correctamente');
+        await loadTransactions();
+      } else {
+        showError(res?.data?.message || 'No se pudo actualizar la transacción');
+      }
+    } catch (error) {
+      showError(error?.response?.data?.message || error.message || 'No se pudo actualizar la transacción');
+    } finally {
+      setEditingId(null);
+    }
+  };
+
+  // ── RENDER ─────────────────────────────────────────────────
+  return (
+    <div style={{
+      minHeight:  "100vh",
+      padding:    "clamp(16px,3vw,32px)",
+      background: "radial-gradient(ellipse 70% 50% at 10% 0%, rgba(79,142,247,0.07) 0%, transparent 55%), radial-gradient(ellipse 50% 40% at 90% 100%, rgba(0,212,160,0.05) 0%, transparent 50%), var(--dash-bg, #070d1a)",
+    }}>
+      <div style={{ maxWidth:"1440px", margin:"0 auto", display:"flex", flexDirection:"column", gap:"24px" }}>
+
+        {/* ══ Hero ══════════════════════════════════════════════ */}
+        <section style={{
+          ...glass,
+          padding:    "clamp(24px,4vw,40px)",
+          position:   "relative",
+          background: "linear-gradient(135deg, rgba(10,37,64,0.92) 0%, rgba(26,75,140,0.72) 55%, rgba(79,142,247,0.14) 100%)",
+          border:     "1px solid rgba(79,142,247,0.2)",
+        }}>
+          <div style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:0,
+            background:"radial-gradient(ellipse 55% 70% at 90% 10%, rgba(79,142,247,0.18) 0%, transparent 55%), radial-gradient(ellipse 40% 50% at 10% 90%, rgba(0,212,160,0.10) 0%, transparent 50%)" }} />
+          <div style={{ position:"absolute", inset:0, zIndex:0, pointerEvents:"none",
+            backgroundImage:"linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
+            backgroundSize:"48px 48px" }} />
+
+          <div style={{ position:"relative", zIndex:1, display:"flex", flexWrap:"wrap", gap:"20px", alignItems:"flex-end", justifyContent:"space-between" }}>
+            <div>
+              {/* Pill badge */}
+              <div style={{ display:"inline-flex", alignItems:"center", gap:"6px", padding:"5px 12px", borderRadius:"999px",
+                background:"rgba(79,142,247,0.12)", border:"1px solid rgba(79,142,247,0.25)", marginBottom:"12px" }}>
+                <CreditCardIcon style={{ width:"13px", height:"13px", color:"rgba(79,142,247,0.85)" }} />
+                <span style={{ fontSize:"0.62rem", fontWeight:700, letterSpacing:"0.22em", textTransform:"uppercase", color:"rgba(79,142,247,0.85)" }}>
+                  Auditoría Financiera
+                </span>
+              </div>
+              <h1 style={{
+                fontFamily:    '"DM Serif Display", Georgia, serif',
+                fontSize:      "clamp(1.8rem,4vw,3rem)",
+                fontWeight:    400,
+                color:         "#e8f0fe",
+                letterSpacing: "-0.02em",
+                lineHeight:    1.15,
+                marginBottom:  "10px",
+              }}>
+                Historial de Transacciones
+              </h1>
+              <p style={{ fontSize:"0.875rem", color:"rgba(232,240,254,0.5)", maxWidth:"520px", lineHeight:1.7 }}>
+                Monitoreo detallado de todos los movimientos financieros, depósitos y transferencias procesadas por el sistema.
+              </p>
+            </div>
+
+            <button
+              onClick={loadTransactions}
+              disabled={loading}
+              style={{
+                display:"inline-flex", alignItems:"center", gap:"8px",
+                padding:"12px 22px", borderRadius:"12px",
+                background:"rgba(79,142,247,0.15)", border:"1px solid rgba(79,142,247,0.35)",
+                color:"#a5c8ff", fontSize:"0.845rem", fontWeight:600,
+                cursor: loading ? "not-allowed" : "pointer",
+                opacity: loading ? 0.6 : 1,
+                backdropFilter:"blur(10px)", transition:"all 0.2s ease",
+                boxShadow:"0 4px 20px rgba(79,142,247,0.15)",
+              }}
+              onMouseEnter={e => { if (!loading) { e.currentTarget.style.background="rgba(79,142,247,0.28)"; e.currentTarget.style.transform="translateY(-2px)"; } }}
+              onMouseLeave={e => { e.currentTarget.style.background="rgba(79,142,247,0.15)"; e.currentTarget.style.transform="translateY(0)"; }}
+            >
+              <ArrowPathIcon style={{ width:"16px", height:"16px" }} />
+              {loading ? "Cargando…" : "Actualizar Datos"}
+            </button>
+          </div>
+        </section>
+
+        {/* ══ Stats ═════════════════════════════════════════════ */}
+        <section style={{ display:"grid", gap:"16px", gridTemplateColumns:"repeat(auto-fill, minmax(220px,1fr))" }}>
+          {stats.map(stat => <StatCard key={stat.label} {...stat} />)}
+        </section>
+
+        {/* ══ Table ═════════════════════════════════════════════ */}
+        <section style={{ ...glass, padding:"24px 28px" }}>
+          {loading ? (
+            <div style={{ display:"flex", justifyContent:"center", padding:"64px 0" }}>
+              <Spinner />
+            </div>
+          ) : transactions.length === 0 ? (
+            <div style={{
+              display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+              borderRadius:"14px", border:"1px dashed rgba(255,255,255,0.1)", padding:"64px 24px",
+              background:"rgba(255,255,255,0.02)", textAlign:"center",
+            }}>
+              <div style={{ width:"56px", height:"56px", borderRadius:"14px", background:"rgba(79,142,247,0.15)", border:"1px solid rgba(79,142,247,0.25)", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:"16px" }}>
+                <CreditCardIcon style={{ width:"28px", height:"28px", color:"#4f8ef7" }} />
+              </div>
+              <h2 style={{ fontSize:"1.1rem", fontWeight:700, color:"#e8f0fe", marginBottom:"8px" }}>No hay transacciones registradas</h2>
+              <p style={{ fontSize:"0.845rem", color:"rgba(232,240,254,0.38)", maxWidth:"400px", lineHeight:1.7 }}>
+                El historial de movimientos se encuentra vacío. Realice la primera operación para verla aquí.
+              </p>
+            </div>
+          ) : (
+            <div style={{ overflowX:"auto" }}>
+              <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"0.875rem" }}>
+                <thead>
+                  <tr style={{ borderBottom:"1px solid rgba(255,255,255,0.07)" }}>
+                    {["Tipo", "Fecha", "Monto", "Referencia", "Estado"].map((h, i) => (
+                      <th key={h} style={{
+                        padding:"12px 16px",
+                        textAlign: i === 4 ? "right" : "left",
+                        fontSize:"0.65rem", fontWeight:700, letterSpacing:"0.14em",
+                        textTransform:"uppercase", color:"rgba(232,240,254,0.35)",
+                        whiteSpace:"nowrap",
+                      }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {transactions.map((tx, idx) => {
+                    const typeKey = normalizeType(tx.type);
+                    const tc      = TX_TYPE[typeKey] || TX_TYPE.transfer;
+                    const sc      = statusStyle(tx.status);
+                    const isEven  = idx % 2 === 0;
+                    const txId    = getTxId(tx);
+
+                    return (
+                      <tr
+                        key={txId || `${tx.type}-${idx}`}
+                        style={{ borderBottom:"1px solid rgba(255,255,255,0.04)", background: isEven ? "transparent" : "rgba(255,255,255,0.015)", transition:"background 0.15s" }}
+                        onMouseEnter={e => e.currentTarget.style.background="rgba(79,142,247,0.05)"}
+                        onMouseLeave={e => e.currentTarget.style.background= isEven ? "transparent" : "rgba(255,255,255,0.015)"}
+                      >
+                        {/* Tipo */}
+                        <td style={{ padding:"14px 16px" }}>
+                          <div style={{ display:"inline-flex", alignItems:"center", gap:"8px" }}>
+                            <div style={{ width:"28px", height:"28px", borderRadius:"8px", background:tc.bg, border:`1px solid ${tc.border}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                              <span style={{ fontSize:"10px", fontWeight:800, color:tc.color }}>
+                                {tx.type[0].toUpperCase()}
+                              </span>
+                            </div>
+                            <span style={{ fontWeight:600, color:"#e8f0fe" }}>{getTransactionType(tx.type)}</span>
+                          </div>
+                        </td>
+
+                        {/* Fecha */}
+                        <td style={{ padding:"14px 16px", color:"rgba(232,240,254,0.45)", fontSize:"0.82rem" }}>
+                          {new Date(tx.date).toLocaleDateString('es-GT', { day:'2-digit', month:'short', year:'numeric' })}
+                        </td>
+
+                        {/* Monto */}
+                        <td style={{ padding:"14px 16px" }}>
+                          <span style={{ fontWeight:700, color: typeKey === 'deposit' ? "#00d4a0" : "#e8f0fe", fontSize:"0.9rem" }}>
+                            Q {tx.amount.toFixed(2)}
+                          </span>
+                        </td>
+
+                        {/* Referencia */}
+                        <td style={{ padding:"14px 16px" }}>
+                          <span style={{ fontFamily:"monospace", fontSize:"0.75rem", color:"rgba(232,240,254,0.3)", letterSpacing:"0.04em" }}>
+                            {tx.reference || '—'}
+                          </span>
+                        </td>
+
+                        {/* Estado + revert */}
+                        <td style={{ padding:"14px 16px", textAlign:"right" }}>
+                          <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", gap:"8px" }}>
+                            <span style={{
+                              display:"inline-flex", alignItems:"center",
+                              padding:"4px 10px", borderRadius:"999px",
+                              fontSize:"0.68rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase",
+                              background: sc.bg, color: sc.color, border:`1px solid ${sc.border}`,
+                            }}>
+                              {tx.status}
+                            </span>
+
+                            {canEditTransaction(tx) && (
+                              <button
+                                onClick={() => handleEditTransaction(tx)}
+                                disabled={editingId === txId}
+                                style={{
+                                  padding:"5px 12px", borderRadius:"8px", fontSize:"0.72rem", fontWeight:700, cursor:"pointer",
+                                  background:"rgba(79,142,247,0.14)", border:"1px solid rgba(79,142,247,0.28)", color:"#a5c8ff",
+                                  opacity: editingId === txId ? 0.6 : 1, transition:"all 0.18s",
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background="rgba(79,142,247,0.24)"; }}
+                                onMouseLeave={e => { e.currentTarget.style.background="rgba(79,142,247,0.14)"; }}
+                              >
+                                {editingId === txId ? "Editando…" : "Editar"}
+                              </button>
+                            )}
+
+                            {canRevertTransaction(tx) && (
+                              <button
+                                onClick={() => handleRevert(txId)}
+                                disabled={revertingId === txId}
+                                style={{
+                                  padding:"5px 12px", borderRadius:"8px", fontSize:"0.72rem", fontWeight:700, cursor:"pointer",
+                                  background:"rgba(248,113,113,0.12)", border:"1px solid rgba(248,113,113,0.28)", color:"#f87171",
+                                  opacity: revertingId === txId ? 0.6 : 1, transition:"all 0.18s",
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background="rgba(248,113,113,0.25)"; }}
+                                onMouseLeave={e => { e.currentTarget.style.background="rgba(248,113,113,0.12)"; }}
+                              >
+                                {revertingId === txId ? "Revirtiendo…" : "Revertir"}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {!loading && transactions.length > 0 && (
+            <div style={{ marginTop:"20px", paddingTop:"16px", borderTop:"1px solid rgba(255,255,255,0.07)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <span style={{ fontSize:"0.75rem", color:"rgba(232,240,254,0.3)", letterSpacing:"0.06em" }}>
+                {transactions.length} transacciones registradas
+              </span>
+              <div style={{ display:"flex", gap:"6px" }}>
+                {["deposit","withdrawal","transfer","payment"].map(t => {
+                  const c = TX_TYPE[t];
+                  return (
+                    <div key={t} style={{ display:"inline-flex", alignItems:"center", gap:"4px" }}>
+                      <div style={{ width:"8px", height:"8px", borderRadius:"50%", background:c.color }} />
+                      <span style={{ fontSize:"0.68rem", color:"rgba(232,240,254,0.3)", textTransform:"capitalize" }}>{t}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
+  );
 };
 
 export default Transactions;

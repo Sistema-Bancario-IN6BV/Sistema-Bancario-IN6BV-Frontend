@@ -1,3 +1,4 @@
+//CreditCardItem (Aquí mantener la tarjeta, solo modificar el diseño visual de lo demás pero sin tocar la tarjeta en sí)
 import React from 'react';
 import '../../../styles/credit-card.css';
 
