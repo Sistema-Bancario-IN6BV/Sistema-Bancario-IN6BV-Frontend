@@ -13,6 +13,7 @@ import { Spinner } from '../../../shared/components/layouts/Spinner';
 import ConversionModal from '../../../shared/components/ui/ConversionModal';
 import { showError, showSuccess } from '../../../shared/utils/toast';
 import { normalizeRole } from '../../../shared/utils/authRole';
+import { parseDate, formatDateTime, formatDate } from '../../../shared/utils/date';
 import {
   ArrowUpRightIcon,
   ArrowPathIcon,
@@ -38,7 +39,10 @@ const normalizeTxType = (type) => String(type || '').toUpperCase();
 
 const isSameDay = (leftDate, rightDate = new Date()) => {
   if (!leftDate) return false;
-  return new Date(leftDate).toDateString() === rightDate.toDateString();
+  const ld = parseDate(leftDate);
+  const rd = rightDate instanceof Date ? rightDate : parseDate(rightDate);
+  if (!ld || !rd) return false;
+  return ld.toDateString() === rd.toDateString();
 };
 
 const getAccountId = (account) => account?._id || account?.id || '';
@@ -444,7 +448,7 @@ export const ClientDashboard = () => {
                                 {t.type === 'TRANSFER' ? 'Transferencia' : t.type}
                               </p>
                               <p style={{ fontSize: '0.62rem', color: 'rgba(232,240,254,0.3)' }}>
-                                {new Date(t.createdAt).toLocaleString('es-GT')}
+                                {formatDateTime(t.createdAt)}
                               </p>
                             </div>
                           </div>
@@ -495,7 +499,7 @@ export const ClientDashboard = () => {
               </button>
               {pendingRequest && (
                 <p style={{ marginTop: '10px', fontSize: '0.72rem', color: '#fbbf24' }}>
-                  Solicitud pendiente desde {new Date(pendingRequest.createdAt).toLocaleDateString('es-GT')}.
+                  Solicitud pendiente desde {formatDate(pendingRequest.createdAt)}.
                 </p>
               )}
             </div>

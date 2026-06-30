@@ -11,6 +11,7 @@ import {
 } from '../../../shared/api/admin';
 import { showError, showSuccess } from '../../../shared/utils/toast';
 import { Spinner } from '../../../shared/components/layouts/Spinner.jsx';
+import { parseDate, formatDateTime, formatDate } from '../../../shared/utils/date';
 import {
   ArrowPathIcon,
   UsersIcon,
@@ -33,7 +34,9 @@ const aggregateByDay = (transactions = []) => {
   transactions.forEach((tx) => {
     const date = tx?.createdAt || tx?.date || tx?.created_at;
     if (!date) return;
-    const dayIndex = new Date(date).getDay();
+    const parsed = parseDate(date);
+    if (!parsed) return;
+    const dayIndex = parsed.getDay();
     const normalizedDay = dayIndex === 0 ? 6 : dayIndex - 1;
     const label = dayLabels[normalizedDay];
     totals.set(label, (totals.get(label) || 0) + Math.abs(Number(tx?.amount || 0)));
@@ -168,7 +171,9 @@ export const AdminDashboard = () => {
     const todayTransactions = transactions.filter((tx) => {
       const date = tx?.createdAt || tx?.date || tx?.created_at;
       if (!date) return false;
-      return new Date(date).toDateString() === new Date().toDateString();
+      const parsed = parseDate(date);
+      if (!parsed) return false;
+      return parsed.toDateString() === new Date().toDateString();
     }).length;
 
     return [
@@ -413,7 +418,7 @@ export const AdminDashboard = () => {
                               {requester ? `${requester.name || ''} ${requester.surname || ''}`.trim() : 'Sin perfil'}
                             </p>
                             <p style={{ fontSize: '0.68rem', color: 'rgba(232,240,254,0.35)' }}>
-                              {new Date(request.createdAt).toLocaleString('es-GT')}
+                              {formatDateTime(request.createdAt)}
                             </p>
                           </div>
                           <span style={{

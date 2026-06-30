@@ -5,6 +5,7 @@ import { getTransactions, getMyTransactions, revertTransaction, updateTransactio
 import { showSuccess, showError } from '../../../shared/utils/toast';
 import { Spinner } from "../../../shared/components/layouts/Spinner.jsx";
 import { normalizeRole } from '../../../shared/utils/authRole';
+import { formatDate, parseDate } from '../../../shared/utils/date';
 import { useAuthStore } from '../../auth/store/authStore';
 import {
   ArrowPathIcon,
@@ -113,7 +114,9 @@ export const Transactions = () => {
     if (tx.reverted) return false;
     const createdAt = tx.createdAt || tx.date;
     if (!createdAt) return false;
-    return (Date.now() - new Date(createdAt).getTime()) <= 60_000;
+    const parsed = parseDate(createdAt);
+    if (!parsed) return false;
+    return (Date.now() - parsed.getTime()) <= 60_000;
   };
 
   const loadTransactions = async () => {
@@ -338,7 +341,7 @@ export const Transactions = () => {
 
                         {/* Fecha */}
                         <td style={{ padding:"14px 16px", color:"rgba(232,240,254,0.45)", fontSize:"0.82rem" }}>
-                          {new Date(tx.date).toLocaleDateString('es-GT', { day:'2-digit', month:'short', year:'numeric' })}
+                          {formatDate(tx.createdAt || tx.date || tx.created_at)}
                         </td>
 
                         {/* Monto */}

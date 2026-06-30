@@ -14,6 +14,7 @@ import {
 } from '../../../shared/api/products';
 import { showSuccess, showError } from '../../../shared/utils/toast';
 import { normalizeRole } from '../../../shared/utils/authRole';
+import { parseDate } from '../../../shared/utils/date';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
@@ -85,7 +86,7 @@ export const Products = () => {
           const purchases = Array.isArray(data) ? data : [];
           return purchases.map((purchase) => ({ ...purchase, accountId }));
         });
-        mergedHistory.sort((l, r) => new Date(r?.createdAt || r?.date || 0) - new Date(l?.createdAt || l?.date || 0));
+        mergedHistory.sort((l, r) => (parseDate(r?.createdAt || r?.date || 0)?.getTime() || 0) - (parseDate(l?.createdAt || l?.date || 0)?.getTime() || 0));
         setPurchaseHistory(mergedHistory);
       } catch (error) { console.warn('No se pudo cargar el contexto de compras:', error); }
     };
@@ -137,7 +138,7 @@ export const Products = () => {
         const purchases = Array.isArray(data) ? data : [];
         return purchases.map((purchase) => ({ ...purchase, accountId }));
       });
-      mergedHistory.sort((l, r) => new Date(r?.createdAt || r?.date || 0) - new Date(l?.createdAt || l?.date || 0));
+      mergedHistory.sort((l, r) => (parseDate(r?.createdAt || r?.date || 0)?.getTime() || 0) - (parseDate(l?.createdAt || l?.date || 0)?.getTime() || 0));
       setPurchaseHistory(mergedHistory);
     } catch (error) {
       console.warn('No se pudo cargar el historial de compras:', error);
