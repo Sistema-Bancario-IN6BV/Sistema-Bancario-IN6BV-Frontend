@@ -60,7 +60,7 @@ export const Services = () => {
   const [services, setServices] = useState([]);
   const [loading,  setLoading]  = useState(false);
   const [editing,  setEditing]  = useState(null);
-  const [form,     setForm]     = useState({ name: '', price: 0, description: '', isActive: true });
+  const [form,     setForm]     = useState({ name: '', price: '', description: '', isActive: true });
 
   const moneyFormatter = useMemo(
     () => new Intl.NumberFormat('es-GT', { style: 'currency', currency: 'GTQ', minimumFractionDigits: 2 }),
@@ -96,21 +96,42 @@ export const Services = () => {
   // ── Handlers originales intactos ──
   const openCreate = useCallback(() => {
     setEditing(null);
-    setForm({ name: '', price: 0, description: '', isActive: true });
+    setForm({ name: '', price: '', description: '', isActive: true });
   }, []);
 
   const openEdit = useCallback((service) => {
     setEditing(service?._id || service?.id);
     setForm({
       name:        service?.name || '',
-      price:       Number(service?.price || 0),
+      price:       service?.price ?? '',
       description: service?.description || '',
       isActive:    String(service?.isActive) === 'false' ? false : !!service?.isActive,
     });
   }, []);
 
   const handleSave = async () => {
-    const payload = { ...form, type: 'service' };
+    const trimmedName = String(form.name || '').trim();
+    const trimmedDescription = String(form.description || '').trim();
+    const parsedPrice = Number(form.price);
+
+    if (!trimmedName) {
+      showError('El nombre del servicio es obligatorio');
+      return;
+    }
+
+    if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
+      showError('El precio debe ser un número mayor a cero');
+      return;
+    }
+
+    const payload = {
+      ...form,
+      name: trimmedName,
+      description: trimmedDescription,
+      price: parsedPrice,
+      type: 'service',
+    };
+
     try {
       if (editing) {
         await updateProduct(editing, payload);
@@ -424,15 +445,22 @@ export const Services = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  {['Servicio', 'Precio', 'Estado', ''].map((h, i) => (
-                    <th key={i} style={{
-                      padding: '14px 0',
-                      textAlign: i === 1 ? 'right' : i === 3 ? 'right' : 'left',
+                  {[
+                    { label: 'Servicio', align: 'left' },
+                    { label: 'Precio', align: 'right' },
+                    { label: 'Estado', align: 'left' },
+                    { label: '', align: 'right' },
+                  ].map((header, i) => (
+                    <th key={`${header.label}-${i}`} style={{
+                      padding: '14px 16px',
+                      textAlign: header.align,
                       fontSize: '0.65rem', fontWeight: 700,
                       letterSpacing: '0.14em', textTransform: 'uppercase',
                       color: 'rgba(232,240,254,0.35)',
+                      whiteSpace: 'nowrap',
+                      borderRight: i < 3 ? '1px solid rgba(255,255,255,0.05)' : 'none',
                     }}>
-                      {h}
+                      {header.label}
                     </th>
                   ))}
                 </tr>
