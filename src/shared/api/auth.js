@@ -1,3 +1,4 @@
+
 // auth.js — DOS FIXES PUNTUALES, resto idéntico al original
 //
 // FIX 1 — updateProfile: era postForm → debe ser putForm
@@ -19,7 +20,9 @@ export const login = async (data) => {
         if (typeof window !== 'undefined' && resp?.data?.token) {
             window.__AUTH_TOKEN__ = resp.data.token;
         }
-    } catch {}
+    } catch (e) {
+        console.warn('[login] failed to expose token on window', e);
+    }
     return resp;
 };
 

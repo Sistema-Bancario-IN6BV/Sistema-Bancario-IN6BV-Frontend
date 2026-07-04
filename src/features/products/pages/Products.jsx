@@ -30,6 +30,12 @@ import {
   XMarkIcon,
   CheckIcon,
 } from "@heroicons/react/24/outline";
+import { ProductModal } from '../components/ProductModal.jsx';
+import { PurchaseModal } from '../components/PurchaseModal.jsx';
+import { StatCard } from '../../services/components/StatCard.jsx';
+import { GLASS_PANEL } from '../../../shared/constants/glassStyles';
+
+const glassPanel = GLASS_PANEL;
 
 export const Products = () => {
   // ── Estado y lógica originales 100% intactos ──
@@ -105,7 +111,8 @@ export const Products = () => {
         productsData = Object.values(productsData);
       }
       const finalProducts = Array.isArray(productsData) ? productsData : [];
-      const normalized    = finalProducts.map(p => {
+      const nonServiceProducts = finalProducts.filter(p => String(p?.type || '').toLowerCase() !== 'service');
+      const normalized    = nonServiceProducts.map(p => {
         const raw         = p?.isActive;
         const isActiveBool = typeof raw === 'boolean' ? raw
           : typeof raw === 'string'  ? raw === 'true' || raw === '1'
@@ -243,17 +250,6 @@ export const Products = () => {
     }
   };
 
-  // ── glass panel helper ──
-  const glassPanel = {
-    borderRadius: '16px',
-    background: 'rgba(255,255,255,0.04)',
-    backdropFilter: 'blur(16px)',
-    WebkitBackdropFilter: 'blur(16px)',
-    border: '1px solid rgba(255,255,255,0.09)',
-    boxShadow: '0 8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)',
-    overflow: 'hidden',
-  };
-
   return (
     <div style={{
       minHeight: '100vh',
@@ -340,32 +336,12 @@ export const Products = () => {
         {/* ══ Stat Cards ══ */}
         <section style={{ display: 'grid', gap: '14px', gridTemplateColumns: 'repeat(auto-fill, minmax(200px,1fr))' }}>
           {[
-            { label: 'Total de Productos', value: products.length,                                                         icon: BuildingStorefrontIcon, grad: 'linear-gradient(135deg,#4f8ef7,#2563eb)',  glow: 'rgba(79,142,247,0.35)' },
-            { label: 'Precio Promedio',    value: products.length > 0 ? `Q ${(products.reduce((s,p) => s + (Number(p.price)||0), 0) / products.length).toFixed(2)}` : 'Q 0', icon: CurrencyDollarIcon, grad: 'linear-gradient(135deg,#00d4a0,#059669)', glow: 'rgba(0,212,160,0.35)' },
-            { label: 'Activos',            value: products.filter(p => p.isActive).length,                                 icon: ShieldCheckIcon,        grad: 'linear-gradient(135deg,#a78bfa,#7c3aed)', glow: 'rgba(167,139,250,0.35)' },
-            { label: 'Inactivos',          value: products.filter(p => !p.isActive).length,                                icon: TagIcon,                grad: 'linear-gradient(135deg,#fbbf24,#d97706)', glow: 'rgba(251,191,36,0.3)' },
-          ].map(({ label, value, icon: Icon, grad, glow }) => (
-            <article key={label} style={{
-              position: 'relative', overflow: 'hidden', borderRadius: '14px', padding: '18px 20px',
-              background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255,255,255,0.09)',
-              boxShadow: '0 6px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)',
-              transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-            }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = `0 16px 40px rgba(0,0,0,0.45), 0 0 20px ${glow}`; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)'; }}
-            >
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: grad }} />
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
-                <div>
-                  <p style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(232,240,254,0.4)', marginBottom: '6px' }}>{label}</p>
-                  <p style={{ fontSize: '1.6rem', fontWeight: 700, color: '#e8f0fe', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{value}</p>
-                </div>
-                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: grad, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `0 4px 16px ${glow}` }}>
-                  <Icon style={{ width: '18px', height: '18px', color: '#fff' }} />
-                </div>
-              </div>
-            </article>
+            { label: 'Total de Productos', value: products.length,                                                                                                                   icon: BuildingStorefrontIcon, grad: 'linear-gradient(135deg,#4f8ef7,#2563eb)',  glow: 'rgba(79,142,247,0.35)'   },
+            { label: 'Precio Promedio',    value: products.length > 0 ? `Q ${(products.reduce((s,p) => s + (Number(p.price)||0), 0) / products.length).toFixed(2)}` : 'Q 0',         icon: CurrencyDollarIcon,     grad: 'linear-gradient(135deg,#00d4a0,#059669)', glow: 'rgba(0,212,160,0.35)'    },
+            { label: 'Activos',            value: products.filter(p => p.isActive).length,                                                                                           icon: ShieldCheckIcon,        grad: 'linear-gradient(135deg,#a78bfa,#7c3aed)', glow: 'rgba(167,139,250,0.35)'  },
+            { label: 'Inactivos',          value: products.filter(p => !p.isActive).length,                                                                                          icon: TagIcon,                grad: 'linear-gradient(135deg,#fbbf24,#d97706)', glow: 'rgba(251,191,36,0.3)'    },
+          ].map(stat => (
+            <StatCard key={stat.label} {...stat} />
           ))}
         </section>
 
@@ -667,183 +643,27 @@ export const Products = () => {
           </section>
         )}
 
-        {/* ══ Modal Crear / Editar — handleSubmit original intacto ══ */}
-        {showModal && (
-          <div style={{
-            position: 'fixed', inset: 0, zIndex: 50,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)',
-            padding: '16px', animation: 'fadeIn 0.15s ease',
-          }}>
-            <form
-              onSubmit={handleSubmit}
-              style={{
-                width: '100%', maxWidth: '500px',
-                borderRadius: '18px',
-                background: 'rgba(10,18,35,0.95)',
-                backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-                border: '1px solid rgba(79,142,247,0.2)',
-                boxShadow: '0 24px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)',
-                overflow: 'hidden',
-                animation: 'fadeUp 0.2s cubic-bezier(0.22,1,0.36,1) both',
-              }}
-            >
-              {/* Header modal */}
-              <div style={{
-                padding: '22px 24px', borderBottom: '1px solid rgba(255,255,255,0.07)',
-                background: 'linear-gradient(135deg, rgba(10,37,64,0.9) 0%, rgba(26,75,140,0.5) 100%)',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              }}>
-                <div>
-                  <p style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(79,142,247,0.8)', marginBottom: '4px' }}>
-                    {editingId ? 'Editar' : 'Nuevo'}
-                  </p>
-                  <h3 style={{ fontFamily: '"DM Serif Display", Georgia, serif', fontSize: '1.25rem', fontWeight: 400, color: '#e8f0fe' }}>
-                    {editingId ? 'Editar Producto' : 'Crear Producto'}
-                  </h3>
-                </div>
-                <button type="button" onClick={() => { setShowModal(false); setEditingId(null); }} style={{ width: '30px', height: '30px', borderRadius: '7px', border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', color: 'rgba(232,240,254,0.6)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <XMarkIcon style={{ width: '14px', height: '14px' }} />
-                </button>
-              </div>
+        <ProductModal
+          isOpen={showModal}
+          editingId={editingId}
+          form={form}
+          onChange={handleChange}
+          onSubmit={handleSubmit}
+          onClose={() => { setShowModal(false); setEditingId(null); }}
+          loading={formLoading}
+        />
 
-              {/* Body modal */}
-              <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {/* Nombre */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.68rem', fontWeight: 600, color: 'rgba(232,240,254,0.45)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Nombre *</label>
-                  <input
-                    name="name" value={form.name} onChange={handleChange}
-                    required maxLength={150} placeholder="Nombre del producto"
-                    style={{ padding: '10px 13px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', fontFamily: 'inherit', fontSize: '0.875rem', color: '#e8f0fe', outline: 'none' }}
-                    onFocus={e => { e.target.style.borderColor = 'rgba(79,142,247,0.55)'; e.target.style.boxShadow = '0 0 0 3px rgba(79,142,247,0.1)'; }}
-                    onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.1)'; e.target.style.boxShadow = 'none'; }}
-                  />
-                </div>
-                {/* Descripción */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.68rem', fontWeight: 600, color: 'rgba(232,240,254,0.45)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Descripción</label>
-                  <textarea
-                    name="description" value={form.description} onChange={handleChange}
-                    maxLength={500} rows={3} placeholder="Descripción del producto"
-                    style={{ padding: '10px 13px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', fontFamily: 'inherit', fontSize: '0.875rem', color: '#e8f0fe', outline: 'none', resize: 'vertical' }}
-                    onFocus={e => { e.target.style.borderColor = 'rgba(79,142,247,0.55)'; e.target.style.boxShadow = '0 0 0 3px rgba(79,142,247,0.1)'; }}
-                    onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.1)'; e.target.style.boxShadow = 'none'; }}
-                  />
-                </div>
-                {/* Precio */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.68rem', fontWeight: 600, color: 'rgba(232,240,254,0.45)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Precio *</label>
-                  <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(232,240,254,0.4)', fontSize: '0.875rem' }}>Q</span>
-                    <input
-                      name="price" value={form.price} onChange={handleChange}
-                      required type="number" min="0" step="0.01" placeholder="0.00"
-                      style={{ width: '100%', padding: '10px 13px 10px 28px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', fontFamily: 'inherit', fontSize: '0.875rem', color: '#e8f0fe', outline: 'none' }}
-                      onFocus={e => { e.target.style.borderColor = 'rgba(79,142,247,0.55)'; e.target.style.boxShadow = '0 0 0 3px rgba(79,142,247,0.1)'; }}
-                      onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.1)'; e.target.style.boxShadow = 'none'; }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer modal */}
-              <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.07)', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button type="button" onClick={() => { setShowModal(false); setEditingId(null); }} style={{ padding: '9px 18px', borderRadius: '9px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(232,240,254,0.6)', fontSize: '0.845rem', fontWeight: 500, cursor: 'pointer' }}>
-                  Cancelar
-                </button>
-                <button type="submit" disabled={formLoading} style={{ padding: '9px 22px', borderRadius: '9px', background: 'rgba(79,142,247,0.18)', border: '1px solid rgba(79,142,247,0.35)', color: '#a5c8ff', fontSize: '0.845rem', fontWeight: 600, cursor: 'pointer', opacity: formLoading ? 0.6 : 1 }}>
-                  {formLoading ? 'Guardando...' : editingId ? 'Actualizar' : 'Crear'}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {/* ══ Modal de compra — handlePurchase original intacto ══ */}
-        {purchaseOpen && selectedProduct && (
-          <div style={{
-            position: 'fixed', inset: 0, zIndex: 50,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)',
-            padding: '16px', animation: 'fadeIn 0.15s ease',
-          }}>
-            <form
-              onSubmit={handlePurchase}
-              style={{
-                width: '100%', maxWidth: '480px',
-                borderRadius: '18px',
-                background: 'rgba(10,18,35,0.95)',
-                backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-                border: '1px solid rgba(0,212,160,0.2)',
-                boxShadow: '0 24px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)',
-                overflow: 'hidden',
-                animation: 'fadeUp 0.2s cubic-bezier(0.22,1,0.36,1) both',
-              }}
-            >
-              {/* Header */}
-              <div style={{
-                padding: '22px 24px', borderBottom: '1px solid rgba(255,255,255,0.07)',
-                background: 'linear-gradient(135deg, rgba(0,100,70,0.4) 0%, rgba(10,18,35,0.9) 100%)',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              }}>
-                <div>
-                  <p style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(0,212,160,0.8)', marginBottom: '4px' }}>Confirmar</p>
-                  <h3 style={{ fontFamily: '"DM Serif Display", Georgia, serif', fontSize: '1.25rem', fontWeight: 400, color: '#e8f0fe' }}>Comprar producto</h3>
-                </div>
-                <button type="button" onClick={() => { setPurchaseOpen(false); setSelectedProduct(null); }} style={{ width: '30px', height: '30px', borderRadius: '7px', border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', color: 'rgba(232,240,254,0.6)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <XMarkIcon style={{ width: '14px', height: '14px' }} />
-                </button>
-              </div>
-
-              {/* Body */}
-              <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <p style={{ fontSize: '0.875rem', color: 'rgba(232,240,254,0.5)', lineHeight: 1.6 }}>
-                  Confirma la compra de <strong style={{ color: '#e8f0fe' }}>{selectedProduct?.name}</strong> por <strong style={{ color: '#00d4a0' }}>{moneyFormatter.format(Number(selectedProduct?.price || 0))}</strong>.
-                </p>
-                {/* Producto seleccionado */}
-                <div style={{ borderRadius: '12px', padding: '14px 16px', background: 'rgba(0,212,160,0.06)', border: '1px solid rgba(0,212,160,0.15)' }}>
-                  <p style={{ fontWeight: 600, color: '#e8f0fe', fontSize: '0.875rem', marginBottom: '3px' }}>{selectedProduct?.name}</p>
-                  <p style={{ fontSize: '0.78rem', color: 'rgba(232,240,254,0.45)' }}>{selectedProduct?.description || 'Sin descripción'}</p>
-                </div>
-                {/* Selector de cuenta */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.68rem', fontWeight: 600, color: 'rgba(232,240,254,0.45)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Cuenta activa *</label>
-                  <select
-                    value={selectedAccountId}
-                    onChange={(event) => setSelectedAccountId(event.target.value)}
-                    required
-                    style={{
-                      padding: '10px 32px 10px 13px',
-                      background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                      borderRadius: '10px', fontFamily: 'inherit', fontSize: '0.875rem', color: '#e8f0fe',
-                      outline: 'none', cursor: 'pointer', appearance: 'none',
-                      backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(232,240,254,0.4)' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")",
-                      backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center',
-                    }}
-                  >
-                    <option value="" style={{ background: '#0a2540' }}>Selecciona una cuenta</option>
-                    {activeAccounts.map((account) => (
-                      <option key={account?._id || account?.id} value={account?._id || account?.id} style={{ background: '#0a2540' }}>
-                        {account?.accountNumber || account?._id} — {moneyFormatter.format(Number(account?.balance || 0))}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.07)', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button type="button" onClick={() => { setPurchaseOpen(false); setSelectedProduct(null); }} style={{ padding: '9px 18px', borderRadius: '9px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(232,240,254,0.6)', fontSize: '0.845rem', fontWeight: 500, cursor: 'pointer' }}>
-                  Cancelar
-                </button>
-                <button type="submit" disabled={purchaseLoading} style={{ padding: '9px 22px', borderRadius: '9px', background: 'rgba(0,212,160,0.15)', border: '1px solid rgba(0,212,160,0.35)', color: '#00d4a0', fontSize: '0.845rem', fontWeight: 600, cursor: 'pointer', opacity: purchaseLoading ? 0.6 : 1 }}>
-                  {purchaseLoading ? 'Comprando...' : 'Confirmar compra'}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
+        <PurchaseModal
+          isOpen={purchaseOpen}
+          selectedProduct={selectedProduct}
+          activeAccounts={activeAccounts}
+          selectedAccountId={selectedAccountId}
+          onAccountChange={setSelectedAccountId}
+          onSubmit={handlePurchase}
+          onClose={() => { setPurchaseOpen(false); setSelectedProduct(null); }}
+          loading={purchaseLoading}
+          moneyFormatter={moneyFormatter}
+        />
 
       </div>
     </div>

@@ -9,14 +9,15 @@ import { Spinner } from "../../../shared/components/layouts/Spinner";
 import { useAccountStore } from "../store/useAccountStore";
 import { useUserManagmentStore } from "../../users/store/useUserManagmentStore";
 
-import { AccountModal } from "./AccountModal.jsx";
-import { useUIStore } from "../../../shared/components/ui/store/uiStore";
-import { AccountConfirmDeleteModal } from "./AccountConfirmDeleteModal.jsx";
-import { DepositTransactionModal } from "./DepositTransactionModal.jsx";
+import { AccountModal } from "../components/AccountModal.jsx";
+import { useUIStore } from "../../../shared/store/uiStore";
+import { AccountConfirmDeleteModal } from "../components/AccountConfirmDeleteModal.jsx";
+import { DepositTransactionModal } from "../components/DepositTransactionModal.jsx";
 import "../../../styles/credit-card.css";
-import { CreditCardItem } from "./CreditCardItem.jsx";
+import { CreditCardItem } from "../components/CreditCardItem.jsx";
+import { StatCard } from "../components/StatCard.jsx";
+import { ActionBtn } from "../components/ActionBtn.jsx";
 import {
-  PencilSquareIcon,
   NoSymbolIcon,
   CheckCircleIcon,
   BuildingLibraryIcon,
@@ -24,86 +25,16 @@ import {
   ShieldCheckIcon,
   PlusIcon,
   ArrowDownCircleIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from "@heroicons/react/24/outline";
 import ConversionModal from '../../../shared/components/ui/ConversionModal';
 import { normalizeRole } from "../../../shared/utils/authRole";
-import { createTransaction, getAccountsWithMostMovements, getAccountByNumber } from "../../../shared/api/admin";
-import { resolveAccountReference } from "../../../shared/utils/accountReference";
+import { createTransaction, getAccountsWithMostMovements } from "../../../shared/api/admin";
+import { GLASS_PANEL, INPUT_STYLE } from "../../../shared/constants/glassStyles";
 
-/* ─── Stat configs ─────────────────────────────────────────── */
-const STAT_CONFIGS = {
-  "Cuentas registradas": { grad: "linear-gradient(135deg,#4f8ef7,#2563eb)", glow: "rgba(79,142,247,0.35)" },
-  "Saldo consolidado":   { grad: "linear-gradient(135deg,#00d4a0,#059669)", glow: "rgba(0,212,160,0.35)"  },
-  "Cuentas activas":     { grad: "linear-gradient(135deg,#a78bfa,#7c3aed)", glow: "rgba(167,139,250,0.35)"},
-  "Bloqueadas":          { grad: "linear-gradient(135deg,#f87171,#dc2626)", glow: "rgba(248,113,113,0.35)"},
-};
-
-/* ─── Glass panel base style ───────────────────────────────── */
-const glass = {
-  borderRadius:        "16px",
-  background:          "rgba(255,255,255,0.04)",
-  backdropFilter:      "blur(18px)",
-  WebkitBackdropFilter:"blur(18px)",
-  border:              "1px solid rgba(255,255,255,0.09)",
-  boxShadow:           "0 8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)",
-  overflow:            "hidden",
-};
-
-/* ─── Stat Card ────────────────────────────────────────────── */
-const StatCard = ({ label, value, icon: Icon }) => {
-  const cfg = STAT_CONFIGS[label] || STAT_CONFIGS["Bloqueadas"];
-  return (
-    <article
-      style={{
-        ...glass,
-        position:   "relative",
-        padding:    "22px 24px",
-        transition: "transform 0.22s ease, box-shadow 0.22s ease",
-        cursor:     "default",
-      }}
-      onMouseEnter={e => {
-        e.currentTarget.style.transform  = "translateY(-3px)";
-        e.currentTarget.style.boxShadow  = `0 16px 48px rgba(0,0,0,0.5), ${cfg.glow} 0 0 30px, inset 0 1px 0 rgba(255,255,255,0.08)`;
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.transform  = "translateY(0)";
-        e.currentTarget.style.boxShadow  = "0 8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)";
-      }}
-    >
-      {/* top accent line */}
-      <div style={{ position:"absolute", top:0, left:0, right:0, height:"2px", background: cfg.grad, borderRadius:"16px 16px 0 0" }} />
-      {/* glow blob */}
-      <div style={{ position:"absolute", top:"-20px", right:"-20px", width:"80px", height:"80px", borderRadius:"50%", background: cfg.grad, opacity:0.08, filter:"blur(20px)", pointerEvents:"none" }} />
-
-      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:"16px" }}>
-        <div>
-          <p style={{ fontSize:"0.65rem", fontWeight:700, letterSpacing:"0.18em", textTransform:"uppercase", color:"rgba(232,240,254,0.45)", marginBottom:"8px" }}>
-            {label}
-          </p>
-          <p style={{ fontSize:"1.75rem", fontWeight:700, color:"#e8f0fe", letterSpacing:"-0.02em", lineHeight:1.1 }}>
-            {value}
-          </p>
-        </div>
-        <div style={{ width:"46px", height:"46px", borderRadius:"12px", background: cfg.grad, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:`0 6px 20px ${cfg.glow}` }}>
-          <Icon style={{ width:"22px", height:"22px", color:"#fff" }} />
-        </div>
-      </div>
-    </article>
-  );
-};
-
-/* ─── Input / Select shared style ─────────────────────────── */
-const inputStyle = {
-  padding:         "9px 13px",
-  background:      "rgba(255,255,255,0.06)",
-  border:          "1px solid rgba(255,255,255,0.12)",
-  borderRadius:    "10px",
-  color:           "#e8f0fe",
-  fontSize:        "0.845rem",
-  outline:         "none",
-  fontFamily:      "inherit",
-  transition:      "border-color 0.2s, box-shadow 0.2s",
-};
+const glass = GLASS_PANEL;
+const inputStyle = INPUT_STYLE;
 
 /* ══════════════════════════════════════════════════════════════
    Accounts — lógica 100% original, solo rediseño visual
@@ -127,8 +58,6 @@ export const Accounts = () => {
   const isClient = normalizedRole === "USER_ROLE";
 
   const [createOpen, setCreateOpen]             = useState(false);
-  const [editOpen, setEditOpen]                 = useState(false);
-  const [selectedAccount, setSelectedAccount]   = useState(null);
   const [conversionOpen, setConversionOpen]     = useState(false);
   const [conversionAccount, setConversionAccount] = useState(null);
   const [depositOpen, setDepositOpen]           = useState(false);
@@ -171,12 +100,6 @@ export const Accounts = () => {
   }, [isAdmin, orderMode]);
 
   // ── Computed values: idénticos al original ─────────────────
-  const canEditSelected = useMemo(() => {
-    if (!selectedAccount) return false;
-    if (!user?.id)        return false;
-    return isAdmin;
-  }, [isAdmin, selectedAccount, user?.id]);
-
   const statusBadgeClass = (status) => {
     if (status === "ACTIVE")  return "bg-green-400/20 text-green-100 border border-green-300/30";
     if (status === "BLOCKED") return "bg-yellow-400/20 text-yellow-100 border border-yellow-300/30";
@@ -247,23 +170,11 @@ export const Accounts = () => {
     if (!ok) { showError(error || "No se pudo crear la cuenta"); return; }
     if (!isAdmin) { showError("Solo administradores pueden crear cuentas"); return; }
     const res = await createAccount(payload);
-    if (res?.success) { showSuccess("Cuenta creada correctamente"); setCreateOpen(false); setSelectedAccount(null); return; }
+    if (res?.success) { showSuccess("Cuenta creada correctamente"); setCreateOpen(false); return; }
     showError(res?.error || "Error al crear la cuenta");
   };
 
-  const handleEditSubmit = async ({ ok, payload, error }) => {
-    if (!ok) { showError(error || "No se pudo actualizar la cuenta"); return; }
-    if (!selectedAccount) return;
-    if (!canEditSelected) { showError("No tienes permiso para editar esta cuenta"); return; }
-    const accountId = selectedAccount._id ?? selectedAccount.id;
-    if (!accountId) { showError("ID de cuenta inválido"); return; }
-    const res = await updateAccount(accountId, payload);
-    if (res?.success) { showSuccess("Cuenta actualizada"); setEditOpen(false); setSelectedAccount(null); return; }
-    showError(res?.error || "Error al actualizar la cuenta");
-  };
-
-  const handleOpenCreate  = ()        => { setSelectedAccount(null); setCreateOpen(true); };
-  const handleOpenEdit    = (account) => { setSelectedAccount(account); setEditOpen(true); };
+  const handleOpenCreate  = ()        => { setCreateOpen(true); };
   const handleOpenDeposit = (account) => { setDepositDestination(account); setDepositOpen(true); };
 
   const handleActivate = (account) => {
@@ -299,7 +210,7 @@ export const Accounts = () => {
   };
 
   const handleDepositSubmit = async ({ ok, payload, error }) => {
-    if (!ok) { showError(error || "No se pudo registrar el depósito"); return; }
+    if (!ok) { showError(error || "Ingresa un monto válido"); return; }
     try {
       setDepositLoading(true);
       const resolvedDestination = await resolveAccountReference(
@@ -579,19 +490,6 @@ export const Accounts = () => {
                           />
                         )}
 
-                        {/* Editar */}
-                        {isAdmin && (
-                          <ActionBtn
-                            icon={<PencilSquareIcon style={{ width:"15px", height:"15px" }} />}
-                            label="Editar"
-                            color="rgba(79,142,247,0.14)"
-                            border="rgba(79,142,247,0.28)"
-                            textColor="#a5c8ff"
-                            hoverBg="rgba(79,142,247,0.28)"
-                            onClick={e => { e.stopPropagation(); handleOpenEdit(account); }}
-                          />
-                        )}
-
                         <div style={{ flex:1 }} />
 
                         {/* Activar / Desactivar */}
@@ -635,6 +533,7 @@ export const Accounts = () => {
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
                 style={{
+                  display:"inline-flex", alignItems:"center", gap:"5px",
                   padding:"8px 18px", borderRadius:"10px", fontSize:"0.8rem", fontWeight:600,
                   background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)",
                   color: currentPage === 1 ? "rgba(232,240,254,0.25)" : "#a5c8ff",
@@ -642,7 +541,8 @@ export const Accounts = () => {
                   transition:"all 0.18s",
                 }}
               >
-                ← Anterior
+                <ChevronLeftIcon style={{ width:"14px", height:"14px" }} />
+                Anterior
               </button>
 
               <span style={{ fontSize:"0.8rem", fontWeight:600, color:"rgba(232,240,254,0.45)", padding:"0 4px" }}>
@@ -653,6 +553,7 @@ export const Accounts = () => {
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
                 style={{
+                  display:"inline-flex", alignItems:"center", gap:"5px",
                   padding:"8px 18px", borderRadius:"10px", fontSize:"0.8rem", fontWeight:600,
                   background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)",
                   color: currentPage === totalPages ? "rgba(232,240,254,0.25)" : "#a5c8ff",
@@ -660,7 +561,8 @@ export const Accounts = () => {
                   transition:"all 0.18s",
                 }}
               >
-                Siguiente →
+                Siguiente
+                <ChevronRightIcon style={{ width:"14px", height:"14px" }} />
               </button>
             </div>
           )}
@@ -678,15 +580,6 @@ export const Accounts = () => {
         onSubmit={handleCreateSubmit}
       />
 
-      <AccountModal
-        mode="edit"
-        isOpen={editOpen}
-        loading={loading}
-        initialValues={selectedAccount}
-        onClose={() => { setEditOpen(false); setSelectedAccount(null); }}
-        onSubmit={handleEditSubmit}
-      />
-
       <AccountConfirmDeleteModal />
 
       <ConversionModal
@@ -700,33 +593,11 @@ export const Accounts = () => {
         onClose={() => { setDepositOpen(false); setDepositDestination(null); }}
         onSubmit={handleDepositSubmit}
         loading={depositLoading}
-        accounts={accounts}
+        account={depositDestination}
         users={users}
-        destinationAccount={depositDestination ? (depositDestination._id || depositDestination.id || depositDestination.accountNumber || "") : ""}
       />
     </div>
   );
 };
-
-/* ─── ActionBtn helper ─────────────────────────────────────── */
-const ActionBtn = ({ icon, label, color, border, textColor, hoverBg, onClick, disabled, title }) => (
-  <button
-    onClick={onClick}
-    disabled={disabled}
-    title={title}
-    style={{
-      display:"inline-flex", alignItems:"center", gap:"6px",
-      padding:"7px 14px", borderRadius:"9px",
-      background: color, border:`1px solid ${border}`, color: textColor,
-      fontSize:"0.78rem", fontWeight:600, cursor: disabled ? "not-allowed" : "pointer",
-      opacity: disabled ? 0.4 : 1, transition:"all 0.18s ease",
-    }}
-    onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = hoverBg; }}
-    onMouseLeave={e => { if (!disabled) e.currentTarget.style.background = color; }}
-  >
-    {icon}
-    {label}
-  </button>
-);
 
 export default Accounts;

@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useUserManagmentStore } from "../store/useUserManagmentStore.js";
 import { Spinner } from "../../../shared/components/layouts/Spinner.jsx";
 import { showError, showSuccess } from "../../../shared/utils/toast.js";
-import { CreateUserModal } from "./CreateUserModal.jsx";
+import { CreateUserModal } from "../components/CreateUserModal.jsx";
 import { useAuthStore } from "../../auth/store/authStore.js";
-import { UserDetailModal } from "./UserDetailModel.jsx";
+import { UserDetailModal } from "../components/UserDetailModel.jsx";
 import { createUserByAdmin, updateUserByAdmin, deleteUserByAdmin } from "../../../shared/api/auth.js";
 import { normalizeRole } from "../../../shared/utils/authRole.js";
 import {
@@ -14,107 +14,20 @@ import {
   ShieldCheckIcon,
   UserGroupIcon,
   ClockIcon,
+  MagnifyingGlassIcon,
+  PlusIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from "@heroicons/react/24/outline";
+import { StatCard } from "../components/StatCard.jsx";
+import { UserAvatar } from "../components/UserAvatar.jsx";
+import { RolePill } from "../components/RolePill.jsx";
+import { GLASS_PANEL } from "../../../shared/constants/glassStyles";
 
-// ── Constantes originales intactas ──
 const PAGE_SIZE = 8;
 const ROLE_OPTIONS = ["ADMIN_ROLE", "USER_ROLE"];
 
-// ── Iconos SVG originales intactos ──
-const IconSearch = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
-  </svg>
-);
-const IconPlus = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-    <path d="M5 12h14M12 5v14"/>
-  </svg>
-);
-const IconChevronLeft = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m15 18-6-6 6-6"/></svg>
-);
-const IconChevronRight = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m9 18 6-6-6-6"/></svg>
-);
-
-// ── Iniciales avatar — lógica original intacta, solo estilos actualizados ──
-const Initials = ({ name, surname }) => {
-  const letters = [name?.[0], surname?.[0]].filter(Boolean).join('').toUpperCase() || '?';
-  return (
-    <div style={{
-      width: 36, height: 36, borderRadius: '50%',
-      background: 'linear-gradient(135deg, rgba(79,142,247,0.25), rgba(0,212,160,0.15))',
-      border: '1px solid rgba(79,142,247,0.35)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: '0.72rem', fontWeight: 700, color: '#a5c8ff',
-      flexShrink: 0,
-      boxShadow: '0 2px 8px rgba(79,142,247,0.2)',
-    }}>
-      {letters}
-    </div>
-  );
-};
-
-// ── Badge por rol — mapeo original intacto, clases visuales actualizadas ──
-const RolePill = ({ role }) => {
-  const styles = {
-    ADMIN_ROLE: {
-      background: 'rgba(79,142,247,0.15)',
-      border: '1px solid rgba(79,142,247,0.35)',
-      color: '#a5c8ff',
-    },
-    USER_ROLE: {
-      background: 'rgba(0,212,160,0.12)',
-      border: '1px solid rgba(0,212,160,0.3)',
-      color: '#00d4a0',
-    },
-  };
-  const s = styles[role] || {
-    background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.12)',
-    color: 'rgba(232,240,254,0.5)',
-  };
-  return (
-    <span style={{
-      ...s,
-      display: 'inline-flex', alignItems: 'center',
-      padding: '3px 10px', borderRadius: '20px',
-      fontSize: '0.68rem', fontWeight: 700,
-      textTransform: 'uppercase', letterSpacing: '0.06em',
-      whiteSpace: 'nowrap',
-    }}>
-      {role}
-    </span>
-  );
-};
-
-// ── Stat Card para el hero ──
-const StatCard = ({ label, value, icon: Icon, grad, glow }) => (
-  <article style={{
-    position: 'relative', overflow: 'hidden',
-    borderRadius: '14px', padding: '18px 20px',
-    background: 'rgba(255,255,255,0.05)',
-    backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-    border: '1px solid rgba(255,255,255,0.09)',
-    boxShadow: '0 6px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)',
-  }}>
-    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: grad }} />
-    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
-      <div>
-        <p style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(232,240,254,0.4)', marginBottom: '6px' }}>{label}</p>
-        <p style={{ fontSize: '1.6rem', fontWeight: 700, color: '#e8f0fe', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{value}</p>
-      </div>
-      <div style={{
-        width: '40px', height: '40px', borderRadius: '10px', background: grad,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-        boxShadow: `0 4px 16px ${glow}`,
-      }}>
-        <Icon style={{ width: '18px', height: '18px', color: '#fff' }} />
-      </div>
-    </div>
-  </article>
-);
+const glassPanel = GLASS_PANEL;
 
 export const Users = () => {
   // ── Store y estado originales intactos ──
@@ -232,17 +145,6 @@ export const Users = () => {
   const adminCount  = users.filter(u => (normalizeRole(u.role) || u.role) === "ADMIN_ROLE").length;
   const clientCount = users.filter(u => (normalizeRole(u.role) || u.role) === "USER_ROLE").length;
 
-  // ── glass panel helper ──
-  const glassPanel = {
-    borderRadius:   '16px',
-    background:     'rgba(255,255,255,0.04)',
-    backdropFilter: 'blur(16px)',
-    WebkitBackdropFilter: 'blur(16px)',
-    border:         '1px solid rgba(255,255,255,0.09)',
-    boxShadow:      '0 8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)',
-    overflow:       'hidden',
-  };
-
   return (
     <div style={{
       minHeight: '100vh',
@@ -305,7 +207,7 @@ export const Users = () => {
               onMouseEnter={e => { e.currentTarget.style.background = 'rgba(79,142,247,0.28)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'rgba(79,142,247,0.18)'; e.currentTarget.style.transform = 'translateY(0)'; }}
             >
-              <IconPlus /> Agregar usuario
+              <PlusIcon style={{ width: '15px', height: '15px' }} /> Agregar usuario
             </button>
           </div>
         </section>
@@ -324,7 +226,7 @@ export const Users = () => {
             {/* Búsqueda — value, onChange originales intactos */}
             <div style={{ gridColumn: 'span 2', position: 'relative' }}>
               <span style={{ position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(232,240,254,0.35)', pointerEvents: 'none' }}>
-                <IconSearch />
+                <MagnifyingGlassIcon style={{ width: '15px', height: '15px' }} />
               </span>
               <input
                 value={search}
@@ -429,7 +331,7 @@ export const Users = () => {
                       {/* Usuario */}
                       <td style={{ padding: '15px 24px', verticalAlign: 'middle' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <Initials name={u.name} surname={u.surname} />
+                          <UserAvatar name={u.name} surname={u.surname} />
                           <span style={{ fontWeight: 500, color: '#e8f0fe', fontSize: '0.875rem' }}>
                             {[u.name, u.surname].filter(Boolean).join(" ") || "—"}
                           </span>
@@ -496,7 +398,7 @@ export const Users = () => {
                 onMouseEnter={e => { if (currentPage !== 1) e.currentTarget.style.background = 'rgba(79,142,247,0.12)'; }}
                 onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
               >
-                <IconChevronLeft /> Anterior
+                <ChevronLeftIcon style={{ width: '14px', height: '14px' }} /> Anterior
               </button>
               <span style={{
                 padding: '7px 12px', fontSize: '0.78rem', fontWeight: 600,
@@ -519,7 +421,7 @@ export const Users = () => {
                 onMouseEnter={e => { if (currentPage !== totalPages) e.currentTarget.style.background = 'rgba(79,142,247,0.12)'; }}
                 onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
               >
-                Siguiente <IconChevronRight />
+                Siguiente <ChevronRightIcon style={{ width: '14px', height: '14px' }} />
               </button>
             </div>
           </div>
