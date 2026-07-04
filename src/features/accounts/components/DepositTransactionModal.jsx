@@ -53,6 +53,7 @@ const formatAccountLabel = (account, owner) => {
    DepositTransactionModal — lógica 100% original
    ══════════════════════════════════════════════════════════════ */
 export const DepositTransactionModal = ({ isOpen, onClose, onSubmit, loading, accounts = [], users = [], destinationAccount }) => {
+  if (!isOpen) return null;
   // Estado: quitar sourceAccount — depósito administrativo desde admin
   const [form, setForm] = useState({ destinationAccount: destinationAccount || "", amount: "", description: "" });
 
@@ -61,8 +62,9 @@ export const DepositTransactionModal = ({ isOpen, onClose, onSubmit, loading, ac
     setForm({ destinationAccount: destinationAccount || "", amount: "", description: "" });
   }, [isOpen, destinationAccount]);
 
-  const accountId = account._id || account.id;
-  const owner = users.find(u => u.uid === account.externalUserId || u.id === account.externalUserId);
+  const account = accounts.find(a => (a._id || a.id) === (destinationAccount || form.destinationAccount)) || null;
+  const accountId = account ? (account._id || account.id) : null;
+  const owner = account ? users.find(u => u.uid === account.externalUserId || u.id === account.externalUserId) : null;
   const ownerName = owner ? `${owner.name || ""} ${owner.surname || ""}`.trim() : null;
 
   const handleSubmit = (e) => {
@@ -146,7 +148,7 @@ export const DepositTransactionModal = ({ isOpen, onClose, onSubmit, loading, ac
                     onChange={e => setForm(p => ({ ...p, amount: e.target.value }))}
                     placeholder="0.00"
                     style={{ ...inputStyle, paddingLeft: "28px" }}
-                    onFocus={focusOn} onBlur={focusOff}
+                    onFocus={focusInput} onBlur={blurInput}
                   />
                 </div>
               </div>
@@ -160,7 +162,7 @@ export const DepositTransactionModal = ({ isOpen, onClose, onSubmit, loading, ac
                   onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
                   placeholder="Depósito en efectivo"
                   style={inputStyle}
-                  onFocus={focusOn} onBlur={focusOff}
+                  onFocus={focusInput} onBlur={blurInput}
                 />
               </div>
 

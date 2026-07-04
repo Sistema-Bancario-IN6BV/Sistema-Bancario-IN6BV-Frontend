@@ -593,7 +593,8 @@ export const Accounts = () => {
         onClose={() => { setDepositOpen(false); setDepositDestination(null); }}
         onSubmit={handleDepositSubmit}
         loading={depositLoading}
-        account={depositDestination}
+        accounts={accounts}
+        destinationAccount={depositDestination?._id || depositDestination?.id || depositDestination?.accountNumber || depositDestination}
         users={users}
       />
     </div>

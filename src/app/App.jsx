@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { AppRoutes } from './router/AppRoutes';
 import { useAuthStore } from '../features/auth/store/authStore';
+import ErrorBoundary from '../shared/components/ErrorBoundary';
 
 function App() {
   const { isLoadingAuth, checkAuth } = useAuthStore();
@@ -21,7 +22,9 @@ function App() {
   }
 
   return (
-    <AppRoutes />
+    <ErrorBoundary>
+      <AppRoutes />
+    </ErrorBoundary>
   );
 }
 
