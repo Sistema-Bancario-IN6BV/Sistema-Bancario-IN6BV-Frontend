@@ -1,40 +1,47 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=DM+Serif+Display:ital@0;1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,600;0,700;1,300&display=swap');
 @import "tailwindcss";
 
-/* ===================== DESIGN TOKENS ===================== */
+/* ===================== DESIGN TOKENS — Bi Digital Blue ===================== */
 @theme {
-  /* Paleta original: Azul */
-  --color-primary:        #2e6fd4;
-  --color-primary-dark:   #0a2540;
-  --color-primary-mid:    #1a4b8c;
-  --color-primary-light:  #5a9cf5;
-  --color-accent:         #00c48c;
-  --color-gold:           #D4A017;
-  --color-danger:         #B22222;
-  --color-warning:        #D4A017;
-  --color-success:        #1b6b3a;
-  --color-surface:        #f0f4f9;
+  /* Primary: Navy */
+  --color-primary:        #002241;
+  --color-primary-dark:   #002241;
+  --color-primary-mid:    #003865;
+  --color-primary-light:  #376090;
 
-  /* Fondos */
-  --color-bg-app:         #f0f4f9;
+  /* Secondary: Teal Digital */
+  --color-accent:         #006973;
+  --color-teal-light:     #57eafe;
+
+  /* Amber accent */
+  --color-gold:           #d49300;
+  --color-warning:        #d49300;
+
+  /* Semantic */
+  --color-danger:         #ba1a1a;
+  --color-success:        #006973;
+  --color-surface:        #f9f9f9;
+
+  /* Surfaces */
+  --color-bg-app:         #fdfdfd;
   --color-bg-card:        #ffffff;
-  --color-bg-sidebar:     #0a2540;
-  --color-bg-navbar:      #0a2540;
+  --color-bg-sidebar:     #002241;
+  --color-bg-navbar:      #002241;
 
-  /* Texto */
-  --color-text-main:      #0a2540;
-  --color-text-secondary: #4b6a86;
-  --color-text-muted:     #7b8b9a;
-  --color-text-on-dark:   #f7fbff;
-  --color-text-on-dark-muted: rgba(247,251,255,0.6);
+  /* Text */
+  --color-text-main:      #1a1c1c;
+  --color-text-secondary: #42474f;
+  --color-text-muted:     #6b7280;
+  --color-text-on-dark:   #ffffff;
+  --color-text-on-dark-muted: rgba(255,255,255,0.6);
 
-  /* Bordes */
-  --color-border:         #d0dce8;
-  --color-border-focus:   #2e6fd4;
+  /* Borders */
+  --color-border:         #e5e7eb;
+  --color-border-focus:   #006973;
 
-  /* Tipografía */
-  --font-display: 'DM Serif Display', Georgia, serif;
-  --font-body:    'DM Sans', system-ui, sans-serif;
+  /* Typography */
+  --font-display: 'BiNeoIndustrial', 'Open Sans', system-ui, sans-serif;
+  --font-body:    'Open Sans', system-ui, sans-serif;
 }
 
 /* ===================== RESET ===================== */

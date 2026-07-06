@@ -6,6 +6,7 @@ import {
   ChartBarIcon,
   UsersIcon,
   ShoppingBagIcon,
+  WrenchScrewdriverIcon,
   TableCellsIcon,
   HomeIcon,
 } from "@heroicons/react/24/outline";
@@ -21,7 +22,7 @@ const adminMenuItems = [
   { label: "Transacciones",  to: "/admin/transactions",  icon: TableCellsIcon },
   { label: "Usuarios",       to: "/admin/users",         icon: UsersIcon },
   { label: "Productos",      to: "/admin/products",      icon: ShoppingBagIcon },
-  { label: "Servicios",      to: "/admin/services",      icon: ShoppingBagIcon },
+  { label: "Servicios",      to: "/admin/services",      icon: WrenchScrewdriverIcon },
 ];
 
 const customerMenuItems = [
@@ -29,7 +30,7 @@ const customerMenuItems = [
   { label: "Cuentas",        to: "/client/accounts",     icon: ChartBarIcon },
   { label: "Transacciones",  to: "/client/transactions", icon: TableCellsIcon },
   { label: "Productos",      to: "/client/products",     icon: ShoppingBagIcon },
-  { label: "Servicios",      to: "/client/services",     icon: ShoppingBagIcon },
+  { label: "Servicios",      to: "/client/services",     icon: WrenchScrewdriverIcon },
 ];
 
 const menuItemsByRole = {

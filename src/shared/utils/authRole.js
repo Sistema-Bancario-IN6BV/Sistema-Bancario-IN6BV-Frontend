@@ -43,13 +43,16 @@ export const normalizeAuthUser = (user) => {
     };
 };
 
+import { parseDate } from './date';
+
 export const isTokenExpired = (expiresAt) => {
     if (!expiresAt) {
         return false;
     }
 
-    const expiryTime = new Date(expiresAt).getTime();
-
+    const d = parseDate(expiresAt);
+    if (!d) return false;
+    const expiryTime = d.getTime();
     if (Number.isNaN(expiryTime)) {
         return false;
     }

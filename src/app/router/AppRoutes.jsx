@@ -4,14 +4,14 @@ import { ProtectedRoute } from "./ProtectedRoute.jsx";
 import { RoleGuard } from "./RoleGuard.jsx"; // Importamos el RoleGuard
 import { UnauthorizedPage } from "../../features/auth/pages/UnauthorizedPage.jsx";
 import { VerifyEmailPage } from "../../features/auth/pages/VerifyEmailPage.jsx";
-import { Accounts } from "../../features/accounts/components/Accounts.jsx";
-import { Transactions } from "../../features/transactions/components/Transactions.jsx";
-import { Users } from "../../features/users/components/Users.jsx";
-import { Products } from "../../features/products/components/Products.jsx";
-import { Services } from "../../features/services/components/Services.jsx";
-// Reports feature removed (no available reports)
-import { ClientDashboard } from "../../features/client/components/ClientDashboard.jsx";
-import { AdminDashboard } from "../../features/dashboard/components/AdminDashboard.jsx";
+import { Accounts } from "../../features/accounts/pages/Accounts.jsx";
+import { Transactions } from "../../features/transactions/pages/Transactions.jsx";
+import { Users } from "../../features/users/pages/Users.jsx";
+import { Products } from "../../features/products/pages/Products.jsx";
+import { Services } from "../../features/services/pages/Services.jsx";
+import { Reports } from "../../features/reports/pages/Reports.jsx";
+import { ClientDashboard } from "../../features/client/pages/ClientDashboard.jsx";
+import { AdminDashboard } from "../../features/dashboard/pages/AdminDashboard.jsx";
 import { DashboardPage } from "../Layouts/DashboardPage.jsx";
 import { ProfilePage } from "../../features/auth/pages/ProfilePage.jsx";
 
@@ -36,7 +36,7 @@ export const AppRoutes = () => {
             >
                 <Route index element={<AdminDashboard />} />
                 <Route path="users" element={<Users />} />
-                {/* Reportes eliminado */}
+                <Route path="reports" element={<Reports />} />
                 <Route path="products" element={<Products />} />
                 <Route path="services" element={<Services />} />
                 <Route path="accounts" element={<Accounts />} />
