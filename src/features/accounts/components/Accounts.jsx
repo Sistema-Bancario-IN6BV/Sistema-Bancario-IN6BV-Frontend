@@ -27,8 +27,14 @@ import {
 } from "@heroicons/react/24/outline";
 import ConversionModal from '../../../shared/components/ui/ConversionModal';
 import { normalizeRole } from "../../../shared/utils/authRole";
+<<<<<<< Updated upstream:src/features/accounts/components/Accounts.jsx
 import { createTransaction, getAccountsWithMostMovements, getAccountByNumber } from "../../../shared/api/admin";
 import { resolveAccountReference } from "../../../shared/utils/accountReference";
+=======
+import { resolveAccountReference } from "../../../shared/utils/accountReference";
+import { createTransaction, getAccountsWithMostMovements } from "../../../shared/api/admin";
+import { GLASS_PANEL, INPUT_STYLE } from "../../../shared/constants/glassStyles";
+>>>>>>> Stashed changes:src/features/accounts/pages/Accounts.jsx
 
 /* ─── Stat configs ─────────────────────────────────────────── */
 const STAT_CONFIGS = {

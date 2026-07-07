@@ -75,15 +75,31 @@ const formatAccountLabel = (account, owner) => {
    DepositTransactionModal — lógica 100% original
    ══════════════════════════════════════════════════════════════ */
 export const DepositTransactionModal = ({ isOpen, onClose, onSubmit, loading, accounts = [], users = [], destinationAccount }) => {
+<<<<<<< Updated upstream
   // ── Estado: idéntico al original ──────────────────────────
   const [form, setForm] = useState({ sourceAccount:"", destinationAccount: destinationAccount || "", amount:"", description:"" });
+=======
+  // Estado: quitar sourceAccount — depósito administrativo desde admin
+  const [form, setForm] = useState({ destinationAccount: destinationAccount || "", amount: "", description: "" });
+>>>>>>> Stashed changes
 
   useEffect(() => {
     if (!isOpen) return;
     setForm({ sourceAccount:"", destinationAccount: destinationAccount || "", amount:"", description:"" });
   }, [isOpen, destinationAccount]);
 
+<<<<<<< Updated upstream
   const activeAccounts = useMemo(() => accounts.filter(a => a.status === "ACTIVE"), [accounts]);
+=======
+  // Hooks must always run in the same order every render (Rules of Hooks) —
+  // this early return has to come after all of them, not before.
+  if (!isOpen) return null;
+
+  const account = accounts.find(a => (a._id || a.id) === (destinationAccount || form.destinationAccount)) || null;
+  const accountId = account ? (account._id || account.id) : null;
+  const owner = account ? users.find(u => u.uid === account.externalUserId || u.id === account.externalUserId) : null;
+  const ownerName = owner ? `${owner.name || ""} ${owner.surname || ""}`.trim() : null;
+>>>>>>> Stashed changes
 
   if (!isOpen) return null;
 
