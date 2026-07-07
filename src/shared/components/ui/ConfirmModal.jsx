@@ -1,5 +1,5 @@
 //ConfirmModal.jsx
-import { useUIStore } from "./store/uiStore";
+import { useUIStore } from "../../store/uiStore";
 
 export const ConfirmModal = () => {
     const { confirmModal, closeConfirm } = useUIStore();

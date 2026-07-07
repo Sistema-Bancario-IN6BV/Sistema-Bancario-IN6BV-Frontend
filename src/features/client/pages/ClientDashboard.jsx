@@ -7,12 +7,14 @@ import { useUserManagmentStore } from '../../users/store/useUserManagmentStore';
 import { CreditCardItem } from '../../accounts/components/CreditCardItem';
 import {
   getMyAccountRequests, getMyAccountSummary, requestAccount,
-  getFavorites, addFavorite, getMyTransactions, createTransaction,
+  getFavorites, addFavorite, updateFavorite, deleteFavorite, getAccountByNumber,
+  getMyTransactions, createTransaction,
 } from '../../../shared/api/admin';
 import { Spinner } from '../../../shared/components/layouts/Spinner';
 import ConversionModal from '../../../shared/components/ui/ConversionModal';
 import { showError, showSuccess } from '../../../shared/utils/toast';
 import { normalizeRole } from '../../../shared/utils/authRole';
+import { parseDate, formatDateTime, formatDate } from '../../../shared/utils/date';
 import {
   ArrowUpRightIcon,
   ArrowPathIcon,
@@ -22,7 +24,10 @@ import {
   PlusCircleIcon,
   BoltIcon,
   ChartBarIcon,
+  PencilSquareIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
+import { QuickActionCard } from '../components/QuickActionCard.jsx';
 
 /* ── Helpers — idénticos al original ── */
 const statusBadgeClass = (status) => {
@@ -38,7 +43,10 @@ const normalizeTxType = (type) => String(type || '').toUpperCase();
 
 const isSameDay = (leftDate, rightDate = new Date()) => {
   if (!leftDate) return false;
-  return new Date(leftDate).toDateString() === rightDate.toDateString();
+  const ld = parseDate(leftDate);
+  const rd = rightDate instanceof Date ? rightDate : parseDate(rightDate);
+  if (!ld || !rd) return false;
+  return ld.toDateString() === rd.toDateString();
 };
 
 const getAccountId = (account) => account?._id || account?.id || '';
@@ -101,6 +109,9 @@ export const ClientDashboard = () => {
   const [showAddFavForm, setShowAddFavForm]       = useState(false);
   const [newFavAccount, setNewFavAccount]         = useState('');
   const [newFavAlias, setNewFavAlias]             = useState('');
+  const [editingFavId, setEditingFavId]           = useState(null);
+  const [editingFavAlias, setEditingFavAlias]     = useState('');
+  const [favoriteActionLoading, setFavoriteActionLoading] = useState(false);
 
   const normalizedRole = normalizeRole(user?.role);
   const isAdmin  = normalizedRole === 'ADMIN_ROLE';
@@ -211,6 +222,52 @@ export const ClientDashboard = () => {
     setRecipient(destination); setSelectedFrom(getAccountId(fallbackSource)); setAmount('');
     setConfirmPayload({ from: getAccountId(fallbackSource), to: destination, amount: '', favoriteId: favorite?._id || favorite?.id });
     setConfirmOpen(true);
+  };
+
+  const startEditFavorite = (favorite) => {
+    setEditingFavId(favorite?._id || favorite?.id);
+    setEditingFavAlias(favorite?.alias || '');
+  };
+
+  const cancelEditFavorite = () => {
+    setEditingFavId(null);
+    setEditingFavAlias('');
+  };
+
+  const handleUpdateFavoriteAlias = async (favorite) => {
+    const id = favorite?._id || favorite?.id;
+    const alias = String(editingFavAlias || '').trim();
+    if (!alias) { showError('El alias no puede estar vacío'); return; }
+    try {
+      setFavoriteActionLoading(true);
+      const res = await updateFavorite(id, { alias });
+      const updated = res?.data?.updated ?? res?.data ?? null;
+      if (!updated) { showError(res?.data?.message || 'No se pudo actualizar el favorito'); return; }
+      setFavorites((prev) => prev.map((f) => ((f?._id || f?.id) === id ? updated : f)));
+      showSuccess('Alias actualizado');
+      cancelEditFavorite();
+    } catch (err) {
+      showError(err?.response?.data?.message || 'Error al actualizar favorito');
+    } finally {
+      setFavoriteActionLoading(false);
+    }
+  };
+
+  const handleDeleteFavorite = async (favorite) => {
+    const id = favorite?._id || favorite?.id;
+    if (!id) return;
+    try {
+      setFavoriteActionLoading(true);
+      const res = await deleteFavorite(id);
+      const ok = res?.data?.success ?? true;
+      if (!ok) { showError(res?.data?.message || 'No se pudo eliminar'); return; }
+      setFavorites((prev) => prev.filter((f) => (f?._id || f?.id) !== id));
+      showSuccess('Favorito eliminado');
+    } catch (err) {
+      showError(err?.response?.data?.message || 'Error al eliminar favorito');
+    } finally {
+      setFavoriteActionLoading(false);
+    }
   };
 
   const handleRequestAccount = async () => {
@@ -444,7 +501,7 @@ export const ClientDashboard = () => {
                                 {t.type === 'TRANSFER' ? 'Transferencia' : t.type}
                               </p>
                               <p style={{ fontSize: '0.62rem', color: 'rgba(232,240,254,0.3)' }}>
-                                {new Date(t.createdAt).toLocaleString('es-GT')}
+                                {formatDateTime(t.createdAt)}
                               </p>
                             </div>
                           </div>
@@ -495,7 +552,7 @@ export const ClientDashboard = () => {
               </button>
               {pendingRequest && (
                 <p style={{ marginTop: '10px', fontSize: '0.72rem', color: '#fbbf24' }}>
-                  Solicitud pendiente desde {new Date(pendingRequest.createdAt).toLocaleDateString('es-GT')}.
+                  Solicitud pendiente desde {formatDate(pendingRequest.createdAt)}.
                 </p>
               )}
             </div>
@@ -603,8 +660,7 @@ export const ClientDashboard = () => {
                   )}
 
                   {/* Favorites */}
-                  {favorites.length > 0 && (
-                    <div>
+                  <div>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <p style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(232,240,254,0.4)', margin: 0 }}>Favoritos</p>
                         <button
@@ -644,31 +700,95 @@ export const ClientDashboard = () => {
                         </div>
                       )}
 
+                      {favorites.length === 0 ? (
+                        <p style={{ fontSize: '0.72rem', color: 'rgba(232,240,254,0.3)', padding: '8px 2px' }}>
+                          Aún no tienes favoritos. Agrega uno para transferir más rápido.
+                        </p>
+                      ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         {favorites.map(f => {
+                          const id      = f._id || f.id;
                           const acctNum = f.accountNumber || f.account?.accountNumber || f.accountId || '';
                           const display = f.alias || f.name || acctNum || 'Favorito';
+                          const isEditingFav = editingFavId === id;
+
+                          if (isEditingFav) {
+                            return (
+                              <div
+                                key={id || acctNum}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: '6px',
+                                  padding: '9px 12px', borderRadius: '9px',
+                                  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(79,142,247,0.3)',
+                                }}
+                              >
+                                <input
+                                  autoFocus
+                                  value={editingFavAlias}
+                                  onChange={(e) => setEditingFavAlias(e.target.value)}
+                                  style={{ ...inputStyle, flex: 1, padding: '6px 8px', fontSize: '0.78rem' }}
+                                />
+                                <button
+                                  disabled={favoriteActionLoading}
+                                  onClick={() => handleUpdateFavoriteAlias(f)}
+                                  title="Guardar"
+                                  style={{ background: 'rgba(0,212,160,0.15)', border: 'none', borderRadius: '7px', width: '26px', height: '26px', color: '#00d4a0', cursor: favoriteActionLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 700 }}
+                                >
+                                  ✓
+                                </button>
+                                <button
+                                  disabled={favoriteActionLoading}
+                                  onClick={cancelEditFavorite}
+                                  title="Cancelar"
+                                  style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '7px', width: '26px', height: '26px', color: 'rgba(232,240,254,0.6)', cursor: favoriteActionLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            );
+                          }
+
                           return (
-                            <button
-                              key={f._id || f.id || f.accountId || acctNum}
+                            <div
+                              key={id || acctNum}
                               style={{
-                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                display: 'flex', alignItems: 'center', gap: '6px',
                                 padding: '9px 12px', borderRadius: '9px', fontSize: '0.78rem', fontWeight: 600,
                                 background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
-                                color: '#e8f0fe', cursor: 'pointer', transition: 'background 0.15s',
+                                color: '#e8f0fe', transition: 'background 0.15s',
                               }}
                               onMouseEnter={e => { e.currentTarget.style.background = 'rgba(79,142,247,0.12)'; }}
                               onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
-                              onClick={() => handleUseFavorite(f)}
                             >
-                              <span>{display}</span>
-                              <span style={{ fontSize: '0.62rem', color: '#4f8ef7', letterSpacing: '0.06em' }}>Usar →</span>
-                            </button>
+                              <button
+                                onClick={() => handleUseFavorite(f)}
+                                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'none', border: 'none', color: 'inherit', font: 'inherit', cursor: 'pointer', padding: 0, textAlign: 'left' }}
+                              >
+                                <span>{display}</span>
+                                <span style={{ fontSize: '0.62rem', color: '#4f8ef7', letterSpacing: '0.06em' }}>Usar →</span>
+                              </button>
+                              <button
+                                disabled={favoriteActionLoading}
+                                onClick={() => startEditFavorite(f)}
+                                title="Editar alias"
+                                style={{ background: 'none', border: 'none', color: 'rgba(232,240,254,0.5)', cursor: favoriteActionLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: '2px' }}
+                              >
+                                <PencilSquareIcon style={{ width: '13px', height: '13px' }} />
+                              </button>
+                              <button
+                                disabled={favoriteActionLoading}
+                                onClick={() => handleDeleteFavorite(f)}
+                                title="Eliminar favorito"
+                                style={{ background: 'none', border: 'none', color: '#f87171', cursor: favoriteActionLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: '2px' }}
+                              >
+                                <TrashIcon style={{ width: '13px', height: '13px' }} />
+                              </button>
+                            </div>
                           );
                         })}
                       </div>
+                      )}
                     </div>
-                  )}
                 </div>
 
                 <ConversionModal accountId={conversionAccount} isOpen={conversionOpen} onClose={() => setConversionOpen(false)} />
@@ -762,53 +882,3 @@ export const ClientDashboard = () => {
   );
 };
 
-/* ── QuickActionCard — rediseño visual, props idénticos ── */
-const QuickActionCard = ({ icon: Icon, label, color, glow = 'rgba(79,142,247,0.3)', onClick, disabled }) => (
-  <button
-    onClick={onClick}
-    disabled={disabled}
-    style={{
-      display:        'flex',
-      flexDirection:  'column',
-      alignItems:     'center',
-      justifyContent: 'center',
-      gap:            '12px',
-      padding:        '20px 12px',
-      borderRadius:   '14px',
-      background:     'rgba(255,255,255,0.04)',
-      backdropFilter: 'blur(12px)',
-      border:         '1px solid rgba(255,255,255,0.08)',
-      cursor:         disabled ? 'not-allowed' : 'pointer',
-      opacity:        disabled ? 0.5 : 1,
-      transition:     'all 0.2s ease',
-      width:          '100%',
-    }}
-    onMouseEnter={e => {
-      if (!disabled) {
-        e.currentTarget.style.transform   = 'translateY(-3px)';
-        e.currentTarget.style.background  = 'rgba(255,255,255,0.07)';
-        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)';
-        e.currentTarget.style.boxShadow   = `0 12px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06)`;
-      }
-    }}
-    onMouseLeave={e => {
-      e.currentTarget.style.transform   = 'translateY(0)';
-      e.currentTarget.style.background  = 'rgba(255,255,255,0.04)';
-      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-      e.currentTarget.style.boxShadow   = 'none';
-    }}
-  >
-    <div style={{
-      width: '46px', height: '46px', borderRadius: '12px',
-      background: color, flexShrink: 0,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      boxShadow: `0 6px 20px ${glow}`,
-      transition: 'transform 0.2s',
-    }}>
-      <Icon style={{ width: '22px', height: '22px', color: '#fff' }} />
-    </div>
-    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(232,240,254,0.7)', textAlign: 'center', lineHeight: 1.3 }}>
-      {label}
-    </span>
-  </button>
-);

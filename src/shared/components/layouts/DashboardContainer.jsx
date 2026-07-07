@@ -5,11 +5,11 @@ import { Sidebar } from './Sidebar'
 
 export const DashboardContainer = ({ children }) => {
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'var(--dash-bg)' }}>
+    <div className="h-screen flex flex-col overflow-hidden" style={{ background: 'var(--dash-bg)' }}>
       <Navbar />
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         <Sidebar />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto">
+        <main className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto">
           {children}
         </main>
       </div>

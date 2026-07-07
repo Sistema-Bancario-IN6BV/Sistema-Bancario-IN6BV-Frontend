@@ -14,16 +14,23 @@
 
 import axios from "axios";
 import { clearPersistedAuth, getPersistedAuthToken } from "../store/authStorage";
+import {
+    ADMIN_BASE_URL,
+    ADMIN_REQUEST_TIMEOUT_MS,
+    AUTH_BASE_URL,
+    AUTH_REQUEST_TIMEOUT_MS,
+    LOGIN_ROUTE,
+} from "../constants/api";
 
 const axiosAuth = axios.create({
-    baseURL: import.meta.env.VITE_AUTH_URL || import.meta.env.VITE_API_AUTH_URL || "http://localhost:5127/api/v1",
-    timeout: 8000,
+    baseURL: AUTH_BASE_URL,
+    timeout: AUTH_REQUEST_TIMEOUT_MS,
     // ✅ FIX: sin Content-Type hardcodeado — axios lo determina según el método y el body
 });
 
 const axiosAdmin = axios.create({
-    baseURL: import.meta.env.VITE_ADMIN_URL || import.meta.env.VITE_API_BANK_URL || "http://localhost:3006/bankSystem/v1",
-    timeout: 10000,
+    baseURL: ADMIN_BASE_URL,
+    timeout: ADMIN_REQUEST_TIMEOUT_MS,
     // ✅ FIX: sin Content-Type hardcodeado — axios lo determina según el método y el body
 });
 
@@ -49,8 +56,12 @@ const handleAuthError = (error) => {
 
     if (status === 401) {
         clearPersistedAuth();
-        try { if (typeof window !== "undefined") delete window.__AUTH_TOKEN__; } catch {}
-        window.location.href = "/";
+        try {
+            if (typeof window !== "undefined") delete window.__AUTH_TOKEN__;
+        } catch (e) {
+            console.warn("[API] failed to clear window auth token", e);
+        }
+        window.location.href = LOGIN_ROUTE;
     }
 
     if (status >= 500) {
