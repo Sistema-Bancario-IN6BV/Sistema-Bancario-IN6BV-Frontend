@@ -31,6 +31,7 @@ import {
 import ConversionModal from '../../../shared/components/ui/ConversionModal';
 import { normalizeRole } from "../../../shared/utils/authRole";
 import { createTransaction, getAccountsWithMostMovements } from "../../../shared/api/admin";
+import { resolveAccountReference } from "../../../shared/utils/accountReference";
 import { GLASS_PANEL, INPUT_STYLE } from "../../../shared/constants/glassStyles";
 
 const glass = GLASS_PANEL;

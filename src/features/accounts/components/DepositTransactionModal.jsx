@@ -53,7 +53,6 @@ const formatAccountLabel = (account, owner) => {
    DepositTransactionModal — lógica 100% original
    ══════════════════════════════════════════════════════════════ */
 export const DepositTransactionModal = ({ isOpen, onClose, onSubmit, loading, accounts = [], users = [], destinationAccount }) => {
-  if (!isOpen) return null;
   // Estado: quitar sourceAccount — depósito administrativo desde admin
   const [form, setForm] = useState({ destinationAccount: destinationAccount || "", amount: "", description: "" });
 
@@ -61,6 +60,10 @@ export const DepositTransactionModal = ({ isOpen, onClose, onSubmit, loading, ac
     if (!isOpen) return;
     setForm({ destinationAccount: destinationAccount || "", amount: "", description: "" });
   }, [isOpen, destinationAccount]);
+
+  // Hooks must always run in the same order every render (Rules of Hooks) —
+  // this early return has to come after all of them, not before.
+  if (!isOpen) return null;
 
   const account = accounts.find(a => (a._id || a.id) === (destinationAccount || form.destinationAccount)) || null;
   const accountId = account ? (account._id || account.id) : null;
